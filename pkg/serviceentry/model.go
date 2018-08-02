@@ -34,7 +34,7 @@ type (
 	}
 
 	Entry struct {
-		meta model.ConfigMeta
+		meta v1.ObjectMeta
 		spec *v1alpha3.ServiceEntry
 	}
 

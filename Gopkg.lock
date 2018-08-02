@@ -306,19 +306,17 @@
   version = "v2.1"
 
 [[projects]]
-  digest = "1:d58ad1bdb07488ce900524d8764f49c5969a03ffc95b29cc122080253152c730"
+  branch = "master"
+  digest = "1:d6db06578860167611abdba9c8b0be0deeb9adc0dc9485b3bca575e33f2dd173"
   name = "github.com/operator-framework/operator-sdk"
   packages = [
     "pkg/k8sclient",
     "pkg/sdk",
-    "pkg/sdk/handler",
-    "pkg/sdk/informer",
-    "pkg/sdk/types",
+    "pkg/sdk/internal/metrics",
     "pkg/util/k8sutil",
   ]
   pruneopts = ""
-  revision = "31577c9d90b99b63043d2014de8fb2dd855aee78"
-  version = "v0.0.5"
+  revision = "efc31221e6aa7f668bb9b3538b7d185bafa74061"
 
 [[projects]]
   branch = "master"
@@ -339,7 +337,10 @@
 [[projects]]
   digest = "1:2f69dc6b2685b31a1a410ef697410aa8a669704fb201d45dbd8c1911728afa75"
   name = "github.com/prometheus/client_golang"
-  packages = ["prometheus"]
+  packages = [
+    "prometheus",
+    "prometheus/promhttp",
+  ]
   pruneopts = ""
   revision = "967789050ba94deca04a5e84cce8ad472ce313c1"
   version = "v0.9.0-pre1"
