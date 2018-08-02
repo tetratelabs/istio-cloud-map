@@ -40,8 +40,8 @@ type (
 
 	store struct {
 		ref          v1.OwnerReference
-		m            sync.RWMutex // guards both maps
-		ours, theirs map[string]*Entry
+		m            sync.RWMutex      // guards both maps
+		ours, theirs map[string]*Entry // maps host->Entry; a single Entry can be referenced by many hosts
 	}
 )
 
@@ -166,4 +166,51 @@ func ownerRef(id string) v1.OwnerReference {
 		Name:       id,
 		Controller: &t,
 	}
+}
+
+// LoggingStore wraps another Store and logs its operations using the log function.
+type LoggingStore struct {
+	log func(fmt string, args ...interface{})
+	s   Store
+}
+
+// Wraps the underlying Store and logs operations perfomed on it using the supplied functions.
+// log.Printf satisfies the signature for log.
+func NewLoggingStore(s Store, log func(fmt string, args ...interface{})) Store {
+	return LoggingStore{log, s}
+}
+
+// Based on the data in the store, classify the host as belonging to us, them, or no one.
+func (l LoggingStore) Classify(host string) Owner {
+	o := l.s.Classify(host)
+	l.log("classified %q as %d", host, o)
+	return o
+}
+
+// Ours are ServiceEntries managed by us
+func (l LoggingStore) Ours() map[string]*Entry {
+	ours := l.s.Ours()
+	l.log("returned ours map: %v", ours)
+	return ours
+}
+
+// Theirs are ServiceEntries managed by any other system
+func (l LoggingStore) Theirs() map[string]*Entry {
+	theirs := l.s.Theirs()
+	l.log("returned ours map: %v", theirs)
+	return theirs
+}
+
+// Insert adds a ServiceEntry to the store (detecting who it belongs to)
+func (l LoggingStore) Insert(cr crd.IstioObject) error {
+	err := l.s.Insert(cr)
+	l.log("inserted %v with result %v", cr, err)
+	return err
+}
+
+// Delete removes a ServiceEntry from the store
+func (l LoggingStore) Delete(cr crd.IstioObject) error {
+	err := l.s.Delete(cr)
+	l.log("deleted %v with result %v", cr, err)
+	return err
 }
