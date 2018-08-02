@@ -793,12 +793,13 @@
   analyzer-version = 1
   input-imports = [
     "github.com/operator-framework/operator-sdk/pkg/sdk",
-    "github.com/sirupsen/logrus",
+    "github.com/operator-framework/operator-sdk/pkg/util/k8sutil",
     "github.com/spf13/cobra",
     "istio.io/api/networking/v1alpha3",
     "istio.io/istio/pilot/pkg/config/kube/crd",
     "istio.io/istio/pilot/pkg/model",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
+    "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
   ]
   solver-name = "gps-cdcl"

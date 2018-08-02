@@ -31,19 +31,24 @@ func serve() (serve *cobra.Command) {
 		id         string
 		debug      bool
 		kubeConfig string
+		namespace  string
 	)
 
 	serve = &cobra.Command{
+		Use:     "serve",
 		Aliases: []string{"serve"},
 		Short:   "Starts the Istio-Route53 Operator server",
 		Example: "istio-route53 serve --id 123",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			// the operator-sdk code will panic if we don't set these:
 			os.Setenv(k8sutil.OperatorNameEnvVar, id)
+			os.Setenv(k8sutil.KubeConfigEnvVar, kubeConfig)
 			// we actually configure it to watch all namespaces below by using the empty string, but they have
 			// validation that panics if we set this var to the empty string
-			os.Setenv(k8sutil.WatchNamespaceEnvVar, "fake")
-			os.Setenv(k8sutil.KubeConfigEnvVar, kubeConfig)
+			if namespace != "" {
+				os.Setenv(k8sutil.WatchNamespaceEnvVar, namespace)
+			}
 
 			sdk.ExposeMetricsPort()
 
@@ -63,8 +68,8 @@ func serve() (serve *cobra.Command) {
 				store = serviceentry.NewLoggingStore(store, log.Printf)
 			}
 
-			log.Printf("Watching %s, %s, %s, %d with id %q", apiType, kind, namespace, resyncPeriod, id)
-			sdk.Watch(apiType, kind, namespace, resyncPeriod)
+			log.Printf("Watching %s, %s, %s, %d with id %q", apiType, kind, "", resyncPeriod, id)
+			sdk.Watch(apiType, kind, "", resyncPeriod)
 			sdk.Handle(serviceentry.NewHandler(store))
 			sdk.Run(context.Background())
 			return nil
@@ -76,6 +81,8 @@ func serve() (serve *cobra.Command) {
 	serve.PersistentFlags().BoolVar(&debug, "debug", true, "if true, enables more logging")
 	serve.PersistentFlags().StringVar(&kubeConfig,
 		"kube-config", "", "kubeconfig location; if empty the server will assume it's in a cluster; for local testing use ~/.kube/config")
+	serve.PersistentFlags().StringVar(&namespace, "namespace", "",
+		"If provided, the namespace this operator publishes CRDs to. If no value is provided it will be populated from the WATCH_NAMESPACE environment variable.")
 	return serve
 }
 

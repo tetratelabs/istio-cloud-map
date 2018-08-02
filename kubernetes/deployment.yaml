@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: istio-route53-operator
+  labels:
+    app: istio-route53
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: istio-route53
+  template:
+    metadata:
+      labels:
+        app: istio-route53
+    spec:
+      serviceAccountName: istio-route53-service-account
+      containers:
+      - name: istio-route53-server
+        image: gcr.io/tetratelabs/istio-route53:v0.1
+        imagePullPolicy: Always
+        args:
+        - serve
+        env:
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace

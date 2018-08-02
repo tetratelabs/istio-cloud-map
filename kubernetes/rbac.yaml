@@ -1,0 +1,38 @@
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: istio-route53-service-entry-role
+  labels:
+    app: istio-route53
+rules:
+# ServiceEntries
+- apiGroups: ["networking.istio.io"]
+  resources: ["serviceentries"]
+  verbs: ["create", "get", "list", "watch", "patch"]
+# Create Services itselfs
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["create"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: istio-route53-service-account
+  namespace: default
+  labels:
+    app: istio-route53
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: istio-route53-service-entry-rolebinding
+  labels:
+    app: istio-route53
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: istio-route53-service-entry-role
+subjects:
+  - kind: ServiceAccount
+    name: istio-route53-service-account
+    namespace: default
