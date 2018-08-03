@@ -32,12 +32,12 @@ import (
 )
 
 const (
-	apiGroup     = "networking.istio.io"
-	apiVersion   = "v1alpha3"
-	apiType      = apiGroup + "/" + apiVersion
-	kind         = "ServiceEntry"
-	namespace    = ""
-	resyncPeriod = 30
+	apiGroup      = "networking.istio.io"
+	apiVersion    = "v1alpha3"
+	apiType       = apiGroup + "/" + apiVersion
+	kind          = "ServiceEntry"
+	allNamespaces = ""
+	resyncPeriod  = 30
 )
 
 func serve() (serve *cobra.Command) {
@@ -68,9 +68,15 @@ func serve() (serve *cobra.Command) {
 
 			k8sutil.AddToSDKScheme(func(scheme *runtime.Scheme) error {
 				scheme.AddKnownTypes(
-					schema.GroupVersion{Group: apiGroup, Version: apiVersion},
+					schema.GroupVersion{
+						Group:   apiGroup,
+						Version: apiVersion,
+					},
 					&crd.ServiceEntry{
-						TypeMeta: v1.TypeMeta{Kind: "ServiceEntry", APIVersion: apiType},
+						TypeMeta: v1.TypeMeta{
+							Kind:       "ServiceEntry",
+							APIVersion: apiType,
+						},
 					},
 					&crd.ServiceEntryList{},
 				)
@@ -82,8 +88,8 @@ func serve() (serve *cobra.Command) {
 				store = serviceentry.NewLoggingStore(store, log.Printf)
 			}
 
-			log.Printf("Watching %s, %s, %s, %d with id %q", apiType, kind, "", resyncPeriod, id)
-			sdk.Watch(apiType, kind, "", resyncPeriod)
+			log.Printf("Watching %s.%s across all namespaces with resync period %d and id %q", apiType, kind, resyncPeriod, id)
+			sdk.Watch(apiType, kind, allNamespaces, resyncPeriod)
 			sdk.Handle(serviceentry.NewHandler(store))
 			sdk.Run(context.Background())
 			return nil
