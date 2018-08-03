@@ -138,11 +138,20 @@ func (s *store) Delete(cr crd.IstioObject) error {
 	owner := owner(s.ref, cr.GetObjectMeta().OwnerReferences)
 	// as a single update, we delete all hosts owned by the ServiceEntry
 	s.m.Lock()
-	if owner == Us {
+	switch owner {
+	case Us:
 		for _, host := range cfg.Spec.(*v1alpha3.ServiceEntry).Hosts {
 			delete(s.ours, host)
 		}
-	} else if owner == Them {
+	case Them:
+		for _, host := range cfg.Spec.(*v1alpha3.ServiceEntry).Hosts {
+			delete(s.theirs, host)
+		}
+	case None:
+		// for those with no owner, make sure we remove from both maps
+		for _, host := range cfg.Spec.(*v1alpha3.ServiceEntry).Hosts {
+			delete(s.ours, host)
+		}
 		for _, host := range cfg.Spec.(*v1alpha3.ServiceEntry).Hosts {
 			delete(s.theirs, host)
 		}
