@@ -9,7 +9,7 @@ rules:
 - apiGroups: ["networking.istio.io"]
   resources: ["serviceentries"]
   verbs: ["create", "get", "list", "watch", "patch"]
-# Create Services itselfs
+# We create a service at startup to host our metrics endpoint
 - apiGroups: [""]
   resources: ["services"]
   verbs: ["create"]
