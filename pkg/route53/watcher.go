@@ -22,7 +22,6 @@ var filterConditionEquals = servicediscovery.FilterConditionEq
 
 // NewWatcher returns a Route53 watcher
 func NewWatcher() (*Watcher, error) {
-	// TODO: handle err
 	session, err := session.NewSession(&aws.Config{
 		// TODO: env vars aren't a secure way to pass secrets
 		Credentials: credentials.NewEnvCredentials(),
