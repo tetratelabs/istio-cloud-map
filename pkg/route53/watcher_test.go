@@ -101,7 +101,7 @@ func TestWatcher_refreshCache(t *testing.T) {
 				ListSvcResult: tt.listSvcRes, ListSvcErr: tt.listSvcErr,
 				DiscInstResult: tt.discInstRes, DiscInstErr: tt.discInstErr,
 			}
-			w := &Watcher{cloudMapAPI: mockAPI, route53API: mockAPI}
+			w := &Watcher{cloudmap: mockAPI, r53: mockAPI}
 			w.refreshCache()
 			if !reflect.DeepEqual(w.hostCache, tt.want) {
 				t.Errorf("Watcher.hostCache() = %v, want %v", w.hostCache, tt.want)
@@ -129,13 +129,13 @@ func TestWatcher_hostsForNamespace(t *testing.T) {
 			want:        map[string][]endpoint{"demo.tetrate.io": []endpoint{endpoint{ipv41, 80}, endpoint{ipv41, 443}}},
 		},
 		{
-			name:       "returns no hosts if host exists but has no endpoints",
+			name:       "returns empty host if host exists but has no endpoints",
 			ns:         &servicediscovery.NamespaceSummary{Id: &hostname, Name: &hostname},
 			listSvcRes: goldenPathListServices,
 			discInstRes: &servicediscovery.DiscoverInstancesOutput{
 				Instances: []*servicediscovery.HttpInstanceSummary{},
 			},
-			want: map[string][]endpoint{},
+			want: map[string][]endpoint{"demo.tetrate.io": []endpoint{}},
 		},
 		{
 			name:        "errors if DiscoverInstances errors",
@@ -157,7 +157,7 @@ func TestWatcher_hostsForNamespace(t *testing.T) {
 				DiscInstResult: tt.discInstRes, DiscInstErr: tt.discInstErr,
 				ListSvcResult: tt.listSvcRes, ListSvcErr: tt.listSvcErr,
 			}
-			w := &Watcher{cloudMapAPI: mockAPI, route53API: mockAPI}
+			w := &Watcher{cloudmap: mockAPI, r53: mockAPI}
 			got, err := w.hostsForNamespace(tt.ns)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Watcher.hostsForNamespace() error = %v, wantErr %v", err, tt.wantErr)
@@ -198,7 +198,7 @@ func TestWatcher_endpointsForService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAPI := &mockSDAPI{DiscInstResult: tt.discInstRes, DiscInstErr: tt.discInstErr}
-			w := &Watcher{cloudMapAPI: mockAPI}
+			w := &Watcher{cloudmap: mockAPI}
 			got, err := w.endpointsForService(tt.svc, tt.ns)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Watcher.endpointsForService() error = %v, wantErr %v", err, tt.wantErr)

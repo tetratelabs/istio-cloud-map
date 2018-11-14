@@ -2,6 +2,9 @@
 REGISTRY ?= gcr.io/tetratelabs
 TAG ?= v0.1
 
+# Make sure we pick up any local overrides.
+-include .makerc
+
 deps: $(DEP)
 	@echo "Fetching dependencies..."
 	dep ensure -v
@@ -23,7 +26,6 @@ run: istio-route53
 build-static: docker/istio-route53-static
 
 docker/istio-route53-static:
-dev-build:	
 	cp -Rf aws/ vendor/github.com/aws
 	GOOS=linux go build \
 		-a --ldflags '-extldflags "-static"' -tags netgo -installsuffix netgo \
@@ -42,11 +44,3 @@ docker-run: docker-build
 		-v ~/.kube/config:/etc/istio-route53/kube-config \
 		--network host \
 		$(REGISTRY)/istio-route53:$(TAG) serve --kube-config /etc/istio-route53/kube-config
-
-
-kube-deploy:
-	kubectl apply -f kubernetes/deployment.yaml
-	kubectl apply -f kubernetes/rbac.yaml
-
-kube-update: dev-build docker-push
-	kubectl delete pods --wait=false $$(kubectl get pods -l app=istio-route53 -o jsonpath='{range .items[*]}{.metadata.name}{" "}{end}')

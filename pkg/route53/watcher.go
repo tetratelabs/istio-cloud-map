@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/pkg/errors"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -22,26 +23,29 @@ var filterConditionEquals = servicediscovery.FilterConditionEq
 // NewWatcher returns a Route53 watcher
 func NewWatcher() (*Watcher, error) {
 	// TODO: handle err
-	session, _ := session.NewSession(&aws.Config{
+	session, err := session.NewSession(&aws.Config{
 		// TODO: env vars aren't a secure way to pass secrets
 		Credentials: credentials.NewEnvCredentials(),
 		// TODO: don't hardcode region
 		Region: aws.String("us-west-2"),
 	})
+	if err != nil {
+		return nil, errors.Wrap(err, "error setting up AWS session")
+	}
 
 	r53Client := servicediscovery.New(session)
 	cloudMapClient := servicediscovery.New(session)
 	cloudMapClient.Endpoint = "https://data-servicediscovery.us-west-2.amazonaws.com"
 
-	return &Watcher{route53API: r53Client, cloudMapAPI: cloudMapClient, interval: time.Minute}, nil
+	return &Watcher{r53: r53Client, cloudmap: cloudMapClient, interval: time.Second * 5}, nil
 }
 
 // Watcher polls Route53 and caches a list of services and their instances
 type Watcher struct {
-	route53API  servicediscoveryiface.ServiceDiscoveryAPI
-	cloudMapAPI servicediscoveryiface.ServiceDiscoveryAPI
-	hostCache   map[string][]endpoint
-	interval    time.Duration
+	r53       servicediscoveryiface.ServiceDiscoveryAPI
+	cloudmap  servicediscoveryiface.ServiceDiscoveryAPI
+	hostCache map[string][]endpoint
+	interval  time.Duration
 }
 
 type endpoint struct {
@@ -70,7 +74,7 @@ func (w *Watcher) Run(ctx context.Context) {
 func (w *Watcher) refreshCache() {
 	log.Print("Syncing Route53 cache")
 	// TODO: allow users to specify namespaces to watch
-	nsResp, err := w.route53API.ListNamespaces(&servicediscovery.ListNamespacesInput{})
+	nsResp, err := w.r53.ListNamespaces(&servicediscovery.ListNamespacesInput{})
 	if err != nil {
 		log.Printf("error retrieving namespace list from Route53: %v", err)
 		return
@@ -94,7 +98,7 @@ func (w *Watcher) refreshCache() {
 
 func (w *Watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[string][]endpoint, error) {
 	hosts := map[string][]endpoint{}
-	svcResp, err := w.route53API.ListServices(&servicediscovery.ListServicesInput{
+	svcResp, err := w.r53.ListServices(&servicediscovery.ListServicesInput{
 		Filters: []*servicediscovery.ServiceFilter{
 			&servicediscovery.ServiceFilter{
 				Name:      &serviceFilterNamespaceID,
@@ -104,27 +108,25 @@ func (w *Watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving service list from Route53 for namespace %q: %v", *ns.Name, err)
+		return nil, errors.Wrapf(err, "error retrieving service list from Route53 for namespace %q", *ns.Name)
 	}
 	for _, svc := range svcResp.Services {
 		host := fmt.Sprintf("%v.%v", *svc.Name, *ns.Name)
 		eps, err := w.endpointsForService(svc, ns)
 		if err != nil {
 			return nil, err
-		} else if len(eps) > 0 {
-			hosts[host] = eps
-		} else {
-			log.Printf("no endpoints found for %q", host)
 		}
+		log.Printf("%v endpoints found for %q", len(eps), host)
+		hosts[host] = eps
 	}
 	return hosts, nil
 }
 
 func (w *Watcher) endpointsForService(svc *servicediscovery.ServiceSummary, ns *servicediscovery.NamespaceSummary) ([]endpoint, error) {
 	// TODO: use health filter?
-	instOutput, err := w.cloudMapAPI.DiscoverInstances(&servicediscovery.DiscoverInstancesInput{ServiceName: svc.Name, NamespaceName: ns.Name})
+	instOutput, err := w.cloudmap.DiscoverInstances(&servicediscovery.DiscoverInstancesInput{ServiceName: svc.Name, NamespaceName: ns.Name})
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving instance list from Route53 for %q in %q: %v", *svc.Name, *ns.Name, err)
+		return nil, errors.Wrapf(err, "error retrieving instance list from Route53 for %q in %q", *svc.Name, *ns.Name)
 	}
 	return instancesToEndpoints(instOutput.Instances), nil
 }
@@ -142,22 +144,21 @@ func instanceToEndpoint(instance *servicediscovery.HttpInstanceSummary) []endpoi
 	if ip, ok := instance.Attributes["AWS_INSTANCE_IPV4"]; ok {
 		host = *ip
 	}
-	if host != "" {
-		if port, ok := instance.Attributes["AWS_INSTANCE_PORT"]; ok {
-			p, err := strconv.Atoi(*port)
-			if err == nil {
-				return []endpoint{endpoint{host: host, port: p}}
-			}
-			log.Printf("error converting port string %v to int: %v", *port, err)
-		}
-		log.Printf("no port found for host %v, assuming http (80) and https (443)", host)
-		return []endpoint{
-			endpoint{host: host, port: 80},
-			endpoint{host: host, port: 443},
-		}
+	if host == "" {
+		log.Printf("instance %v of %v.%v is of a type that is not currently supported", *instance.InstanceId, *instance.ServiceName, *instance.NamespaceName)
+		return []endpoint{}
 	}
-	log.Printf("instance %v of %v.%v is of a type that is not currently supported", *instance.InstanceId, *instance.ServiceName, *instance.NamespaceName)
-	return []endpoint{}
+	if port, ok := instance.Attributes["AWS_INSTANCE_PORT"]; ok {
+		if p, err := strconv.Atoi(*port); err == nil {
+			return []endpoint{endpoint{host: host, port: p}}
+		}
+		log.Printf("error converting port string %v to int: %v", *port, err)
+	}
+	log.Printf("no port found for host %v, assuming http (80) and https (443)", host)
+	return []endpoint{
+		endpoint{host: host, port: 80},
+		endpoint{host: host, port: 443},
+	}
 }
 
 // TODO: delete when Cloud Map UI is fully working
@@ -166,13 +167,13 @@ func (w *Watcher) populateDummyData() {
 	svcName := "dev.null"
 	for {
 		// Namespace creation
-		nss, err := w.route53API.ListNamespaces(&servicediscovery.ListNamespacesInput{})
+		nss, err := w.r53.ListNamespaces(&servicediscovery.ListNamespacesInput{})
 		if err != nil {
 			log.Printf("error listing namespace %v", err)
 		}
 		if len(nss.Namespaces) == 0 {
 			log.Print("no namespaces found creating one")
-			if _, err := w.route53API.CreateHttpNamespace(&servicediscovery.CreateHttpNamespaceInput{Name: &nsName}); err != nil {
+			if _, err := w.r53.CreateHttpNamespace(&servicediscovery.CreateHttpNamespaceInput{Name: &nsName}); err != nil {
 				log.Printf("error creating http namespace %v", err)
 			}
 			time.Sleep(time.Second * 10)
@@ -180,13 +181,13 @@ func (w *Watcher) populateDummyData() {
 		}
 		log.Print(nss)
 		// Service creation
-		svcs, err := w.route53API.ListServices(&servicediscovery.ListServicesInput{})
+		svcs, err := w.r53.ListServices(&servicediscovery.ListServicesInput{})
 		if err != nil {
 			log.Printf("error listing service %v", err)
 		}
 		if len(svcs.Services) == 0 {
 			log.Print("no services found creating one")
-			if _, err := w.route53API.CreateService(&servicediscovery.CreateServiceInput{NamespaceId: nss.Namespaces[0].Id, Name: &svcName}); err != nil {
+			if _, err := w.r53.CreateService(&servicediscovery.CreateServiceInput{NamespaceId: nss.Namespaces[0].Id, Name: &svcName}); err != nil {
 				log.Printf("error creating service %v", err)
 			}
 			time.Sleep(time.Second * 10)
@@ -194,7 +195,7 @@ func (w *Watcher) populateDummyData() {
 		}
 		log.Print(svcs)
 		// Instance registration
-		insts, err := w.cloudMapAPI.DiscoverInstances(&servicediscovery.DiscoverInstancesInput{NamespaceName: nss.Namespaces[0].Name, ServiceName: svcs.Services[0].Name})
+		insts, err := w.cloudmap.DiscoverInstances(&servicediscovery.DiscoverInstancesInput{NamespaceName: nss.Namespaces[0].Name, ServiceName: svcs.Services[0].Name})
 		if err != nil {
 			log.Printf("error discovering instances %v", err)
 		}
@@ -204,7 +205,7 @@ func (w *Watcher) populateDummyData() {
 		}
 		id, ip := "ipv4", "8.8.8.8"
 		log.Print("no instances found creating one")
-		if _, err := w.cloudMapAPI.RegisterInstance(&servicediscovery.RegisterInstanceInput{
+		if _, err := w.cloudmap.RegisterInstance(&servicediscovery.RegisterInstanceInput{
 			InstanceId: &id,
 			ServiceId:  svcs.Services[0].Id,
 			Attributes: map[string]*string{"AWS_INSTANCE_IPV4": &ip},
