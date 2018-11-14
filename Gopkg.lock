@@ -26,6 +26,222 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
+  digest = "1:f2d2a2cb77297e9f55137e8933253ac7c7616636b901a0a3ee96d1ef7aa75e99"
+  name = "github.com/aws/aws-sdk-go"
+  packages = [
+    "aws",
+    "aws/awserr",
+    "aws/awsutil",
+    "aws/client",
+    "aws/client/metadata",
+    "aws/corehandlers",
+    "aws/credentials",
+    "aws/credentials/ec2rolecreds",
+    "aws/credentials/endpointcreds",
+    "aws/credentials/plugincreds",
+    "aws/credentials/stscreds",
+    "aws/crr",
+    "aws/csm",
+    "aws/defaults",
+    "aws/ec2metadata",
+    "aws/endpoints",
+    "aws/request",
+    "aws/session",
+    "aws/signer/v4",
+    "awsmigrate/awsmigrate-renamer/rename",
+    "awstesting",
+    "awstesting/integration",
+    "awstesting/integration/customizations/s3",
+    "awstesting/integration/smoke",
+    "awstesting/mock",
+    "awstesting/unit",
+    "internal/ini",
+    "internal/s3err",
+    "internal/sdkio",
+    "internal/sdkrand",
+    "internal/sdkuri",
+    "internal/shareddefaults",
+    "private/model/api",
+    "private/model/api/codegentest/service/restjsonservice",
+    "private/model/api/codegentest/service/restxmlservice",
+    "private/model/api/codegentest/service/rpcservice",
+    "private/protocol",
+    "private/protocol/ec2query",
+    "private/protocol/eventstream",
+    "private/protocol/eventstream/eventstreamapi",
+    "private/protocol/eventstream/eventstreamtest",
+    "private/protocol/json/jsonutil",
+    "private/protocol/jsonrpc",
+    "private/protocol/query",
+    "private/protocol/query/queryutil",
+    "private/protocol/rest",
+    "private/protocol/restjson",
+    "private/protocol/restxml",
+    "private/protocol/xml/xmlutil",
+    "private/signer/v2",
+    "private/util",
+    "service/acm",
+    "service/acmpca",
+    "service/alexaforbusiness",
+    "service/apigateway",
+    "service/applicationautoscaling",
+    "service/applicationdiscoveryservice",
+    "service/appstream",
+    "service/appsync",
+    "service/athena",
+    "service/autoscaling",
+    "service/autoscalingplans",
+    "service/batch",
+    "service/budgets",
+    "service/chime",
+    "service/cloud9",
+    "service/clouddirectory",
+    "service/cloudformation",
+    "service/cloudfront",
+    "service/cloudfront/sign",
+    "service/cloudhsm",
+    "service/cloudhsmv2",
+    "service/cloudsearch",
+    "service/cloudsearchdomain",
+    "service/cloudtrail",
+    "service/cloudwatch",
+    "service/cloudwatchevents",
+    "service/cloudwatchlogs",
+    "service/codebuild",
+    "service/codecommit",
+    "service/codedeploy",
+    "service/codepipeline",
+    "service/codestar",
+    "service/cognitoidentity",
+    "service/cognitoidentityprovider",
+    "service/cognitosync",
+    "service/comprehend",
+    "service/configservice",
+    "service/connect",
+    "service/costandusagereportservice",
+    "service/costexplorer",
+    "service/databasemigrationservice",
+    "service/datapipeline",
+    "service/dax",
+    "service/devicefarm",
+    "service/directconnect",
+    "service/directoryservice",
+    "service/dlm",
+    "service/dynamodb",
+    "service/dynamodb/dynamodbattribute",
+    "service/dynamodb/dynamodbiface",
+    "service/dynamodb/expression",
+    "service/dynamodbstreams",
+    "service/ec2",
+    "service/ecr",
+    "service/ecs",
+    "service/efs",
+    "service/eks",
+    "service/elasticache",
+    "service/elasticbeanstalk",
+    "service/elasticsearchservice",
+    "service/elastictranscoder",
+    "service/elb",
+    "service/elbv2",
+    "service/emr",
+    "service/firehose",
+    "service/fms",
+    "service/gamelift",
+    "service/glacier",
+    "service/glue",
+    "service/greengrass",
+    "service/guardduty",
+    "service/health",
+    "service/iam",
+    "service/inspector",
+    "service/iot",
+    "service/iot1clickdevicesservice",
+    "service/iot1clickprojects",
+    "service/iotanalytics",
+    "service/iotdataplane",
+    "service/iotjobsdataplane",
+    "service/kinesis",
+    "service/kinesisanalytics",
+    "service/kinesisvideo",
+    "service/kinesisvideoarchivedmedia",
+    "service/kinesisvideomedia",
+    "service/kms",
+    "service/kms/kmsiface",
+    "service/lambda",
+    "service/lexmodelbuildingservice",
+    "service/lexruntimeservice",
+    "service/lightsail",
+    "service/machinelearning",
+    "service/macie",
+    "service/marketplacecommerceanalytics",
+    "service/marketplaceentitlementservice",
+    "service/marketplacemetering",
+    "service/mediaconvert",
+    "service/medialive",
+    "service/mediapackage",
+    "service/mediastore",
+    "service/mediastoredata",
+    "service/mediatailor",
+    "service/migrationhub",
+    "service/mobile",
+    "service/mobileanalytics",
+    "service/mq",
+    "service/mturk",
+    "service/neptune",
+    "service/opsworks",
+    "service/opsworkscm",
+    "service/organizations",
+    "service/pi",
+    "service/pinpoint",
+    "service/polly",
+    "service/pricing",
+    "service/rds",
+    "service/rds/rdsutils",
+    "service/redshift",
+    "service/rekognition",
+    "service/resourcegroups",
+    "service/resourcegroupstaggingapi",
+    "service/route53",
+    "service/route53domains",
+    "service/s3",
+    "service/s3/s3crypto",
+    "service/s3/s3iface",
+    "service/s3/s3manager",
+    "service/sagemaker",
+    "service/sagemakerruntime",
+    "service/secretsmanager",
+    "service/serverlessapplicationrepository",
+    "service/servicecatalog",
+    "service/servicediscovery",
+    "service/ses",
+    "service/sfn",
+    "service/shield",
+    "service/signer",
+    "service/simpledb",
+    "service/sms",
+    "service/snowball",
+    "service/sns",
+    "service/sqs",
+    "service/sqs/sqsiface",
+    "service/ssm",
+    "service/storagegateway",
+    "service/sts",
+    "service/support",
+    "service/swf",
+    "service/transcribeservice",
+    "service/translate",
+    "service/waf",
+    "service/wafregional",
+    "service/workdocs",
+    "service/workmail",
+    "service/workspaces",
+    "service/xray",
+  ]
+  pruneopts = ""
+  revision = "cf00ea20983ce38df17ab0a0814463ab8838459f"
+  version = "v1.15.73"
+
+[[projects]]
   branch = "master"
   digest = "1:c0bec5f9b98d0bc872ff5e834fac186b807b656683bd29cb82fb207a1513fabb"
   name = "github.com/beorn7/perks"
@@ -91,6 +307,14 @@
   pruneopts = ""
   revision = "2b0bd4f193d011c203529df626a65d63cb8a79e8"
   version = "0.15.0"
+
+[[projects]]
+  digest = "1:c07de423ca37dc2765396d6971599ab652a339538084b9b58c9f7fc533b28525"
+  name = "github.com/go-sql-driver/mysql"
+  packages = ["."]
+  pruneopts = ""
+  revision = "d523deb1b23d913de5bdada721a6071e71283618"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:78f3bcfb1777ad793cc7d26054b77e315e0bcbdeda6106449d44f2b688752a27"
@@ -196,6 +420,17 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:981ae65b2d8242298d2f1d1a6e744dd9e9644d3900c13e28f41d8ad415edd104"
+  name = "github.com/gucumber/gucumber"
+  packages = [
+    ".",
+    "gherkin",
+  ]
+  pruneopts = ""
+  revision = "7d5c79e832a25825dbed83e78f8484d4ffe8ec16"
+
+[[projects]]
+  branch = "master"
   digest = "1:4fe55793760295fbef367890352b720784243e0ad19b5ee242519a4682bb9ef8"
   name = "github.com/hashicorp/errwrap"
   packages = ["."]
@@ -244,6 +479,13 @@
   pruneopts = ""
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
+
+[[projects]]
+  digest = "1:6f49eae0c1e5dab1dafafee34b207aeb7a42303105960944828c2079b92fc88e"
+  name = "github.com/jmespath/go-jmespath"
+  packages = ["."]
+  pruneopts = ""
+  revision = "0b12d6b5"
 
 [[projects]]
   digest = "1:53ac4e911e12dde0ab68655e2006449d207a5a681f084974da2b06e5dbeaca72"
@@ -335,6 +577,22 @@
   version = "v2.0.1"
 
 [[projects]]
+  digest = "1:7365acd48986e205ccb8652cc746f09c8b7876030d53710ea6ef7d0bd0dcd7ca"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = ""
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
+  digest = "1:256484dbbcd271f9ecebc6795b2df8cad4c458dd0f5fd82a8c2fa0c29f233411"
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  pruneopts = ""
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:2f69dc6b2685b31a1a410ef697410aa8a669704fb201d45dbd8c1911728afa75"
   name = "github.com/prometheus/client_golang"
   packages = [
@@ -379,6 +637,14 @@
   revision = "05ee40e3a273f7245e8777337fc7b46e533a9a92"
 
 [[projects]]
+  branch = "master"
+  digest = "1:d0148ccd69edc991a8e0e472ae9720f5b46209e12a00c0ba11b4cbcc4fc2c72b"
+  name = "github.com/shiena/ansicolor"
+  packages = ["."]
+  pruneopts = ""
+  revision = "a422bbe96644373c5753384a59d678f7d261ff10"
+
+[[projects]]
   digest = "1:3fcbf733a8d810a21265a7f2fe08a3353db2407da052b233f8b204b5afc03d9b"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -401,6 +667,14 @@
   pruneopts = ""
   revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
   version = "v1.0.1"
+
+[[projects]]
+  digest = "1:c587772fb8ad29ad4db67575dad25ba17a51f072ff18a22b4f0257a4d9c24f75"
+  name = "github.com/stretchr/testify"
+  packages = ["assert"]
+  pruneopts = ""
+  revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
+  version = "v1.2.2"
 
 [[projects]]
   digest = "1:74f86c458e82e1c4efbab95233e0cf51b7cc02dc03193be9f62cd81224e10401"
@@ -449,6 +723,8 @@
   packages = [
     "context",
     "context/ctxhttp",
+    "html",
+    "html/atom",
     "http/httpguts",
     "http2",
     "http2/hpack",
@@ -509,10 +785,24 @@
   version = "v0.3.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:7fd83c38c0d176618490e8e804961f42ebdf3d841eedc7af2211310840c84edd"
+  name = "golang.org/x/tools"
+  packages = [
+    "go/ast/astutil",
+    "go/buildutil",
+    "go/internal/cgo",
+    "go/loader",
+  ]
+  pruneopts = ""
+  revision = "92d8274bd7b8a4c65f24bafe401a029e58392704"
+
+[[projects]]
   digest = "1:c1771ca6060335f9768dff6558108bc5ef6c58506821ad43377ee23ff059e472"
   name = "google.golang.org/appengine"
   packages = [
     ".",
+    "cloudsql",
     "internal",
     "internal/app_identity",
     "internal/base",
@@ -792,9 +1082,224 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/aws/aws-sdk-go/aws",
+    "github.com/aws/aws-sdk-go/aws/awserr",
+    "github.com/aws/aws-sdk-go/aws/awsutil",
+    "github.com/aws/aws-sdk-go/aws/client",
+    "github.com/aws/aws-sdk-go/aws/client/metadata",
+    "github.com/aws/aws-sdk-go/aws/corehandlers",
+    "github.com/aws/aws-sdk-go/aws/credentials",
+    "github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds",
+    "github.com/aws/aws-sdk-go/aws/credentials/endpointcreds",
+    "github.com/aws/aws-sdk-go/aws/credentials/plugincreds",
+    "github.com/aws/aws-sdk-go/aws/credentials/stscreds",
+    "github.com/aws/aws-sdk-go/aws/csm",
+    "github.com/aws/aws-sdk-go/aws/defaults",
+    "github.com/aws/aws-sdk-go/aws/ec2metadata",
+    "github.com/aws/aws-sdk-go/aws/endpoints",
+    "github.com/aws/aws-sdk-go/aws/request",
+    "github.com/aws/aws-sdk-go/aws/session",
+    "github.com/aws/aws-sdk-go/aws/signer/v4",
+    "github.com/aws/aws-sdk-go/awsmigrate/awsmigrate-renamer/rename",
+    "github.com/aws/aws-sdk-go/awstesting",
+    "github.com/aws/aws-sdk-go/awstesting/integration",
+    "github.com/aws/aws-sdk-go/awstesting/integration/customizations/s3",
+    "github.com/aws/aws-sdk-go/awstesting/integration/smoke",
+    "github.com/aws/aws-sdk-go/awstesting/mock",
+    "github.com/aws/aws-sdk-go/awstesting/unit",
+    "github.com/aws/aws-sdk-go/internal/ini",
+    "github.com/aws/aws-sdk-go/internal/s3err",
+    "github.com/aws/aws-sdk-go/internal/sdkio",
+    "github.com/aws/aws-sdk-go/internal/sdkrand",
+    "github.com/aws/aws-sdk-go/internal/sdkuri",
+    "github.com/aws/aws-sdk-go/internal/shareddefaults",
+    "github.com/aws/aws-sdk-go/private/model/api",
+    "github.com/aws/aws-sdk-go/private/model/api/codegentest/service/restjsonservice",
+    "github.com/aws/aws-sdk-go/private/model/api/codegentest/service/restxmlservice",
+    "github.com/aws/aws-sdk-go/private/model/api/codegentest/service/rpcservice",
+    "github.com/aws/aws-sdk-go/private/protocol",
+    "github.com/aws/aws-sdk-go/private/protocol/ec2query",
+    "github.com/aws/aws-sdk-go/private/protocol/eventstream",
+    "github.com/aws/aws-sdk-go/private/protocol/eventstream/eventstreamapi",
+    "github.com/aws/aws-sdk-go/private/protocol/eventstream/eventstreamtest",
+    "github.com/aws/aws-sdk-go/private/protocol/json/jsonutil",
+    "github.com/aws/aws-sdk-go/private/protocol/jsonrpc",
+    "github.com/aws/aws-sdk-go/private/protocol/query",
+    "github.com/aws/aws-sdk-go/private/protocol/query/queryutil",
+    "github.com/aws/aws-sdk-go/private/protocol/rest",
+    "github.com/aws/aws-sdk-go/private/protocol/restjson",
+    "github.com/aws/aws-sdk-go/private/protocol/restxml",
+    "github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil",
+    "github.com/aws/aws-sdk-go/private/signer/v2",
+    "github.com/aws/aws-sdk-go/private/util",
+    "github.com/aws/aws-sdk-go/service/acm",
+    "github.com/aws/aws-sdk-go/service/acmpca",
+    "github.com/aws/aws-sdk-go/service/alexaforbusiness",
+    "github.com/aws/aws-sdk-go/service/apigateway",
+    "github.com/aws/aws-sdk-go/service/applicationautoscaling",
+    "github.com/aws/aws-sdk-go/service/applicationdiscoveryservice",
+    "github.com/aws/aws-sdk-go/service/appstream",
+    "github.com/aws/aws-sdk-go/service/appsync",
+    "github.com/aws/aws-sdk-go/service/athena",
+    "github.com/aws/aws-sdk-go/service/autoscaling",
+    "github.com/aws/aws-sdk-go/service/autoscalingplans",
+    "github.com/aws/aws-sdk-go/service/batch",
+    "github.com/aws/aws-sdk-go/service/budgets",
+    "github.com/aws/aws-sdk-go/service/chime",
+    "github.com/aws/aws-sdk-go/service/cloud9",
+    "github.com/aws/aws-sdk-go/service/clouddirectory",
+    "github.com/aws/aws-sdk-go/service/cloudformation",
+    "github.com/aws/aws-sdk-go/service/cloudfront",
+    "github.com/aws/aws-sdk-go/service/cloudfront/sign",
+    "github.com/aws/aws-sdk-go/service/cloudhsm",
+    "github.com/aws/aws-sdk-go/service/cloudhsmv2",
+    "github.com/aws/aws-sdk-go/service/cloudsearch",
+    "github.com/aws/aws-sdk-go/service/cloudsearchdomain",
+    "github.com/aws/aws-sdk-go/service/cloudtrail",
+    "github.com/aws/aws-sdk-go/service/cloudwatch",
+    "github.com/aws/aws-sdk-go/service/cloudwatchevents",
+    "github.com/aws/aws-sdk-go/service/cloudwatchlogs",
+    "github.com/aws/aws-sdk-go/service/codebuild",
+    "github.com/aws/aws-sdk-go/service/codecommit",
+    "github.com/aws/aws-sdk-go/service/codedeploy",
+    "github.com/aws/aws-sdk-go/service/codepipeline",
+    "github.com/aws/aws-sdk-go/service/codestar",
+    "github.com/aws/aws-sdk-go/service/cognitoidentity",
+    "github.com/aws/aws-sdk-go/service/cognitoidentityprovider",
+    "github.com/aws/aws-sdk-go/service/cognitosync",
+    "github.com/aws/aws-sdk-go/service/comprehend",
+    "github.com/aws/aws-sdk-go/service/configservice",
+    "github.com/aws/aws-sdk-go/service/connect",
+    "github.com/aws/aws-sdk-go/service/costandusagereportservice",
+    "github.com/aws/aws-sdk-go/service/costexplorer",
+    "github.com/aws/aws-sdk-go/service/databasemigrationservice",
+    "github.com/aws/aws-sdk-go/service/datapipeline",
+    "github.com/aws/aws-sdk-go/service/dax",
+    "github.com/aws/aws-sdk-go/service/devicefarm",
+    "github.com/aws/aws-sdk-go/service/directconnect",
+    "github.com/aws/aws-sdk-go/service/directoryservice",
+    "github.com/aws/aws-sdk-go/service/dlm",
+    "github.com/aws/aws-sdk-go/service/dynamodb",
+    "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute",
+    "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface",
+    "github.com/aws/aws-sdk-go/service/dynamodb/expression",
+    "github.com/aws/aws-sdk-go/service/dynamodbstreams",
+    "github.com/aws/aws-sdk-go/service/ec2",
+    "github.com/aws/aws-sdk-go/service/ecr",
+    "github.com/aws/aws-sdk-go/service/ecs",
+    "github.com/aws/aws-sdk-go/service/efs",
+    "github.com/aws/aws-sdk-go/service/eks",
+    "github.com/aws/aws-sdk-go/service/elasticache",
+    "github.com/aws/aws-sdk-go/service/elasticbeanstalk",
+    "github.com/aws/aws-sdk-go/service/elasticsearchservice",
+    "github.com/aws/aws-sdk-go/service/elastictranscoder",
+    "github.com/aws/aws-sdk-go/service/elb",
+    "github.com/aws/aws-sdk-go/service/elbv2",
+    "github.com/aws/aws-sdk-go/service/emr",
+    "github.com/aws/aws-sdk-go/service/firehose",
+    "github.com/aws/aws-sdk-go/service/fms",
+    "github.com/aws/aws-sdk-go/service/gamelift",
+    "github.com/aws/aws-sdk-go/service/glacier",
+    "github.com/aws/aws-sdk-go/service/glue",
+    "github.com/aws/aws-sdk-go/service/greengrass",
+    "github.com/aws/aws-sdk-go/service/guardduty",
+    "github.com/aws/aws-sdk-go/service/health",
+    "github.com/aws/aws-sdk-go/service/iam",
+    "github.com/aws/aws-sdk-go/service/inspector",
+    "github.com/aws/aws-sdk-go/service/iot",
+    "github.com/aws/aws-sdk-go/service/iot1clickdevicesservice",
+    "github.com/aws/aws-sdk-go/service/iot1clickprojects",
+    "github.com/aws/aws-sdk-go/service/iotanalytics",
+    "github.com/aws/aws-sdk-go/service/iotdataplane",
+    "github.com/aws/aws-sdk-go/service/iotjobsdataplane",
+    "github.com/aws/aws-sdk-go/service/kinesis",
+    "github.com/aws/aws-sdk-go/service/kinesisanalytics",
+    "github.com/aws/aws-sdk-go/service/kinesisvideo",
+    "github.com/aws/aws-sdk-go/service/kinesisvideoarchivedmedia",
+    "github.com/aws/aws-sdk-go/service/kinesisvideomedia",
+    "github.com/aws/aws-sdk-go/service/kms",
+    "github.com/aws/aws-sdk-go/service/kms/kmsiface",
+    "github.com/aws/aws-sdk-go/service/lambda",
+    "github.com/aws/aws-sdk-go/service/lexmodelbuildingservice",
+    "github.com/aws/aws-sdk-go/service/lexruntimeservice",
+    "github.com/aws/aws-sdk-go/service/lightsail",
+    "github.com/aws/aws-sdk-go/service/machinelearning",
+    "github.com/aws/aws-sdk-go/service/macie",
+    "github.com/aws/aws-sdk-go/service/marketplacecommerceanalytics",
+    "github.com/aws/aws-sdk-go/service/marketplaceentitlementservice",
+    "github.com/aws/aws-sdk-go/service/marketplacemetering",
+    "github.com/aws/aws-sdk-go/service/mediaconvert",
+    "github.com/aws/aws-sdk-go/service/medialive",
+    "github.com/aws/aws-sdk-go/service/mediapackage",
+    "github.com/aws/aws-sdk-go/service/mediastore",
+    "github.com/aws/aws-sdk-go/service/mediastoredata",
+    "github.com/aws/aws-sdk-go/service/mediatailor",
+    "github.com/aws/aws-sdk-go/service/migrationhub",
+    "github.com/aws/aws-sdk-go/service/mobile",
+    "github.com/aws/aws-sdk-go/service/mobileanalytics",
+    "github.com/aws/aws-sdk-go/service/mq",
+    "github.com/aws/aws-sdk-go/service/mturk",
+    "github.com/aws/aws-sdk-go/service/neptune",
+    "github.com/aws/aws-sdk-go/service/opsworks",
+    "github.com/aws/aws-sdk-go/service/opsworkscm",
+    "github.com/aws/aws-sdk-go/service/organizations",
+    "github.com/aws/aws-sdk-go/service/pi",
+    "github.com/aws/aws-sdk-go/service/pinpoint",
+    "github.com/aws/aws-sdk-go/service/polly",
+    "github.com/aws/aws-sdk-go/service/pricing",
+    "github.com/aws/aws-sdk-go/service/rds",
+    "github.com/aws/aws-sdk-go/service/rds/rdsutils",
+    "github.com/aws/aws-sdk-go/service/redshift",
+    "github.com/aws/aws-sdk-go/service/rekognition",
+    "github.com/aws/aws-sdk-go/service/resourcegroups",
+    "github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi",
+    "github.com/aws/aws-sdk-go/service/route53",
+    "github.com/aws/aws-sdk-go/service/route53domains",
+    "github.com/aws/aws-sdk-go/service/s3",
+    "github.com/aws/aws-sdk-go/service/s3/s3crypto",
+    "github.com/aws/aws-sdk-go/service/s3/s3iface",
+    "github.com/aws/aws-sdk-go/service/s3/s3manager",
+    "github.com/aws/aws-sdk-go/service/sagemaker",
+    "github.com/aws/aws-sdk-go/service/sagemakerruntime",
+    "github.com/aws/aws-sdk-go/service/secretsmanager",
+    "github.com/aws/aws-sdk-go/service/serverlessapplicationrepository",
+    "github.com/aws/aws-sdk-go/service/servicecatalog",
+    "github.com/aws/aws-sdk-go/service/servicediscovery",
+    "github.com/aws/aws-sdk-go/service/ses",
+    "github.com/aws/aws-sdk-go/service/sfn",
+    "github.com/aws/aws-sdk-go/service/shield",
+    "github.com/aws/aws-sdk-go/service/signer",
+    "github.com/aws/aws-sdk-go/service/simpledb",
+    "github.com/aws/aws-sdk-go/service/sms",
+    "github.com/aws/aws-sdk-go/service/snowball",
+    "github.com/aws/aws-sdk-go/service/sns",
+    "github.com/aws/aws-sdk-go/service/sqs",
+    "github.com/aws/aws-sdk-go/service/sqs/sqsiface",
+    "github.com/aws/aws-sdk-go/service/ssm",
+    "github.com/aws/aws-sdk-go/service/storagegateway",
+    "github.com/aws/aws-sdk-go/service/sts",
+    "github.com/aws/aws-sdk-go/service/support",
+    "github.com/aws/aws-sdk-go/service/swf",
+    "github.com/aws/aws-sdk-go/service/transcribeservice",
+    "github.com/aws/aws-sdk-go/service/translate",
+    "github.com/aws/aws-sdk-go/service/waf",
+    "github.com/aws/aws-sdk-go/service/wafregional",
+    "github.com/aws/aws-sdk-go/service/workdocs",
+    "github.com/aws/aws-sdk-go/service/workmail",
+    "github.com/aws/aws-sdk-go/service/workspaces",
+    "github.com/aws/aws-sdk-go/service/xray",
+    "github.com/davecgh/go-spew/spew",
+    "github.com/go-sql-driver/mysql",
+    "github.com/gucumber/gucumber",
+    "github.com/jmespath/go-jmespath",
     "github.com/operator-framework/operator-sdk/pkg/sdk",
     "github.com/operator-framework/operator-sdk/pkg/util/k8sutil",
+    "github.com/pkg/errors",
     "github.com/spf13/cobra",
+    "github.com/stretchr/testify/assert",
+    "golang.org/x/net/html",
+    "golang.org/x/net/http2",
+    "golang.org/x/tools/go/loader",
     "istio.io/api/networking/v1alpha3",
     "istio.io/istio/pilot/pkg/config/kube/crd",
     "istio.io/istio/pilot/pkg/model",

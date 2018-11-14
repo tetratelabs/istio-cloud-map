@@ -18,6 +18,8 @@ import (
 	"context"
 	"log"
 
+	"github.com/tetratelabs/istio-route53/pkg/route53"
+
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/spf13/cobra"
 
@@ -88,10 +90,18 @@ func serve() (serve *cobra.Command) {
 				store = serviceentry.NewLoggingStore(store, log.Printf)
 			}
 
+			ctx := context.Background() // common context for cancellation across all loops/routines
+			log.Print("Starting Route53 watcher")
+			r53Watcher, err := route53.NewWatcher()
+			if err != nil {
+				return err
+			}
+			go r53Watcher.Run(ctx)
+
 			log.Printf("Watching %s.%s across all namespaces with resync period %d and id %q", apiType, kind, resyncPeriod, id)
 			sdk.Watch(apiType, kind, allNamespaces, resyncPeriod)
 			sdk.Handle(serviceentry.NewHandler(store))
-			sdk.Run(context.Background())
+			sdk.Run(ctx)
 			return nil
 		},
 	}
