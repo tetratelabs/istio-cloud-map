@@ -41,10 +41,10 @@ func NewWatcher() (*Watcher, error) {
 
 // Watcher polls Route53 and caches a list of services and their instances
 type Watcher struct {
-	r53       servicediscoveryiface.ServiceDiscoveryAPI
-	cloudmap  servicediscoveryiface.ServiceDiscoveryAPI
-	hostCache map[string][]endpoint
-	interval  time.Duration
+	r53      servicediscoveryiface.ServiceDiscoveryAPI
+	cloudmap servicediscoveryiface.ServiceDiscoveryAPI
+	store    Store
+	interval time.Duration
 }
 
 type endpoint struct {
@@ -59,27 +59,27 @@ func (w *Watcher) Run(ctx context.Context) {
 
 	tick := time.NewTicker(w.interval).C
 	// Initial sync on startup
-	w.refreshCache()
+	w.refreshStore()
 	for {
 		select {
 		case <-tick:
-			w.refreshCache()
+			w.refreshStore()
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (w *Watcher) refreshCache() {
-	log.Print("Syncing Route53 cache")
+func (w *Watcher) refreshStore() {
+	log.Print("Syncing Route53 store")
 	// TODO: allow users to specify namespaces to watch
 	nsResp, err := w.r53.ListNamespaces(&servicediscovery.ListNamespacesInput{})
 	if err != nil {
 		log.Printf("error retrieving namespace list from Route53: %v", err)
 		return
 	}
-	// We want to continue to use existing cache on error
-	tempCache := map[string][]endpoint{}
+	// We want to continue to use existing store on error
+	tempStore := map[string][]endpoint{}
 	for _, ns := range nsResp.Namespaces {
 		hosts, err := w.hostsForNamespace(ns)
 		if err != nil {
@@ -88,11 +88,11 @@ func (w *Watcher) refreshCache() {
 		}
 		// hosts are "svcName.nsName" so by definition can't be the same across namespaces or services
 		for host, eps := range hosts {
-			tempCache[host] = eps
+			tempStore[host] = eps
 		}
 	}
-	log.Print("Route53 cache sync successful")
-	w.hostCache = tempCache
+	log.Print("Route53 store sync successful")
+	w.store.set(tempStore)
 }
 
 func (w *Watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[string][]endpoint, error) {
@@ -148,7 +148,8 @@ func instanceToEndpoint(instance *servicediscovery.HttpInstanceSummary) []endpoi
 		return []endpoint{}
 	}
 	if port, ok := instance.Attributes["AWS_INSTANCE_PORT"]; ok {
-		if p, err := strconv.Atoi(*port); err == nil {
+		p, err := strconv.Atoi(*port)
+		if err == nil {
 			return []endpoint{endpoint{host: host, port: p}}
 		}
 		log.Printf("error converting port string %v to int: %v", *port, err)
