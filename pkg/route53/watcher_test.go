@@ -3,10 +3,10 @@ package route53
 import (
 	"errors"
 	"reflect"
-	"strconv"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/servicediscovery"
+	"istio.io/api/networking/v1alpha3"
 )
 
 type mockSDAPI struct {
@@ -45,9 +45,12 @@ func (m *mockSDAPI) DiscoverInstances(dii *servicediscovery.DiscoverInstancesInp
 }
 
 // various strings to allow pointer usage
-var ipv41, ipv42, subdomain, hostname, portStr = "8.8.8.8", "9.9.9.9", "demo", "tetrate.io", "9999"
+var ipv41, ipv42, subdomain, hostname, portStr, httpPortStr = "8.8.8.8", "9.9.9.9", "demo", "tetrate.io", "9999", "80"
 
 // golden path responses
+var inferedIPv41Endpoint = v1alpha3.ServiceEntry_Endpoint{Address: ipv41, Ports: map[string]uint32{"http": 80, "https": 443}}
+var inferedIPv42Endpoint = v1alpha3.ServiceEntry_Endpoint{Address: ipv42, Ports: map[string]uint32{"http": 80, "https": 443}}
+
 var goldenPathListNamespaces = &servicediscovery.ListNamespacesOutput{
 	Namespaces: []*servicediscovery.NamespaceSummary{
 		&servicediscovery.NamespaceSummary{Id: &hostname, Name: &hostname},
@@ -73,25 +76,25 @@ func TestWatcher_refreshCache(t *testing.T) {
 		listSvcErr  error
 		discInstRes *servicediscovery.DiscoverInstancesOutput
 		discInstErr error
-		want        map[string][]endpoint
+		want        map[string][]v1alpha3.ServiceEntry_Endpoint
 	}{
 		{
 			name:        "store gets updated",
 			listNsRes:   goldenPathListNamespaces,
 			listSvcRes:  goldenPathListServices,
 			discInstRes: goldenPathDiscoverInstances,
-			want:        map[string][]endpoint{"demo.tetrate.io": []endpoint{endpoint{ipv41, 80}, endpoint{ipv41, 443}}},
+			want:        map[string][]v1alpha3.ServiceEntry_Endpoint{"demo.tetrate.io": []v1alpha3.ServiceEntry_Endpoint{inferedIPv41Endpoint}},
 		},
 		{
 			name:      "store unchanged on ListNamespace error",
 			listNsErr: errors.New("bang"),
-			want:      map[string][]endpoint{},
+			want:      map[string][]v1alpha3.ServiceEntry_Endpoint{},
 		},
 		{
 			name:       "store unchanged on ListService error",
 			listNsRes:  goldenPathListNamespaces,
 			listSvcErr: errors.New("bang"),
-			want:       map[string][]endpoint{},
+			want:       map[string][]v1alpha3.ServiceEntry_Endpoint{},
 		},
 	}
 	for _, tt := range tests {
@@ -101,7 +104,7 @@ func TestWatcher_refreshCache(t *testing.T) {
 				ListSvcResult: tt.listSvcRes, ListSvcErr: tt.listSvcErr,
 				DiscInstResult: tt.discInstRes, DiscInstErr: tt.discInstErr,
 			}
-			w := &Watcher{cloudmap: mockAPI, r53: mockAPI, store: New()}
+			w := &Watcher{cloudmap: mockAPI, r53: mockAPI, store: NewStore()}
 			w.refreshStore()
 			if !reflect.DeepEqual(w.store.Hosts(), tt.want) {
 				t.Errorf("Watcher.store = %v, want %v", w.store.Hosts(), tt.want)
@@ -113,7 +116,7 @@ func TestWatcher_refreshCache(t *testing.T) {
 func TestWatcher_hostsForNamespace(t *testing.T) {
 	tests := []struct {
 		name        string
-		want        map[string][]endpoint
+		want        map[string][]v1alpha3.ServiceEntry_Endpoint
 		ns          *servicediscovery.NamespaceSummary
 		listSvcRes  *servicediscovery.ListServicesOutput
 		listSvcErr  error
@@ -126,16 +129,16 @@ func TestWatcher_hostsForNamespace(t *testing.T) {
 			ns:          &servicediscovery.NamespaceSummary{Id: &hostname, Name: &hostname},
 			listSvcRes:  goldenPathListServices,
 			discInstRes: goldenPathDiscoverInstances,
-			want:        map[string][]endpoint{"demo.tetrate.io": []endpoint{endpoint{ipv41, 80}, endpoint{ipv41, 443}}},
+			want:        map[string][]v1alpha3.ServiceEntry_Endpoint{"demo.tetrate.io": []v1alpha3.ServiceEntry_Endpoint{inferedIPv41Endpoint}},
 		},
 		{
-			name:       "returns empty host if host exists but has no endpoints",
+			name:       "returns empty host if host exists but has no Endpoints",
 			ns:         &servicediscovery.NamespaceSummary{Id: &hostname, Name: &hostname},
 			listSvcRes: goldenPathListServices,
 			discInstRes: &servicediscovery.DiscoverInstancesOutput{
 				Instances: []*servicediscovery.HttpInstanceSummary{},
 			},
-			want: map[string][]endpoint{"demo.tetrate.io": []endpoint{}},
+			want: map[string][]v1alpha3.ServiceEntry_Endpoint{"demo.tetrate.io": []v1alpha3.ServiceEntry_Endpoint{}},
 		},
 		{
 			name:        "errors if DiscoverInstances errors",
@@ -170,22 +173,22 @@ func TestWatcher_hostsForNamespace(t *testing.T) {
 	}
 }
 
-func TestWatcher_endpointsForService(t *testing.T) {
+func TestWatcher_EndpointsForService(t *testing.T) {
 	tests := []struct {
 		name        string
 		svc         *servicediscovery.ServiceSummary
 		ns          *servicediscovery.NamespaceSummary
 		discInstRes *servicediscovery.DiscoverInstancesOutput
 		discInstErr error
-		want        []endpoint
+		want        []v1alpha3.ServiceEntry_Endpoint
 		wantErr     bool
 	}{
 		{
-			name:        "Returns endpoints for service",
+			name:        "Returns Endpoints for service",
 			discInstRes: goldenPathDiscoverInstances,
 			svc:         &servicediscovery.ServiceSummary{Name: &subdomain},
 			ns:          &servicediscovery.NamespaceSummary{Name: &hostname},
-			want:        []endpoint{endpoint{ipv41, 80}, endpoint{ipv41, 443}},
+			want:        []v1alpha3.ServiceEntry_Endpoint{inferedIPv41Endpoint},
 		},
 		{
 			name:        "Errors if call to DiscoverInstances errors",
@@ -215,7 +218,7 @@ func Test_instancesToEndpoints(t *testing.T) {
 	tests := []struct {
 		name      string
 		instances []*servicediscovery.HttpInstanceSummary
-		want      []endpoint
+		want      []v1alpha3.ServiceEntry_Endpoint
 	}{
 		{
 			name: "Handles multiple instances of the same type",
@@ -223,10 +226,7 @@ func Test_instancesToEndpoints(t *testing.T) {
 				&servicediscovery.HttpInstanceSummary{Attributes: map[string]*string{"AWS_INSTANCE_IPV4": &ipv41}},
 				&servicediscovery.HttpInstanceSummary{Attributes: map[string]*string{"AWS_INSTANCE_IPV4": &ipv42}},
 			},
-			want: []endpoint{
-				endpoint{ipv41, 80}, endpoint{ipv41, 443},
-				endpoint{ipv42, 80}, endpoint{ipv42, 443},
-			},
+			want: []v1alpha3.ServiceEntry_Endpoint{inferedIPv41Endpoint, inferedIPv42Endpoint},
 		},
 		{
 			name: "Handles multiple instances of differing type",
@@ -237,17 +237,27 @@ func Test_instancesToEndpoints(t *testing.T) {
 					Attributes: map[string]*string{"AWS_ALIAS_DNS_NAME": &hostname},
 				},
 			},
-			want: []endpoint{endpoint{ipv41, 80}, endpoint{ipv41, 443}},
+			want: []v1alpha3.ServiceEntry_Endpoint{inferedIPv41Endpoint},
+		},
+		{
+			name: "handles empty instance attributes map",
+			instances: []*servicediscovery.HttpInstanceSummary{
+				&servicediscovery.HttpInstanceSummary{
+					InstanceId: &subdomain, ServiceName: &subdomain, NamespaceName: &hostname,
+					Attributes: map[string]*string{},
+				},
+			},
+			want: []v1alpha3.ServiceEntry_Endpoint{},
 		},
 		{
 			name:      "Handles empty instances slice",
 			instances: []*servicediscovery.HttpInstanceSummary{},
-			want:      []endpoint{},
+			want:      []v1alpha3.ServiceEntry_Endpoint{},
 		},
 		{
 			name:      "Handles nil instances slice",
 			instances: nil,
-			want:      []endpoint{},
+			want:      []v1alpha3.ServiceEntry_Endpoint{},
 		},
 	}
 	for _, tt := range tests {
@@ -260,40 +270,46 @@ func Test_instancesToEndpoints(t *testing.T) {
 }
 
 func Test_instanceToEndpoint(t *testing.T) {
-	port, _ := strconv.Atoi(portStr)
 	tests := []struct {
 		name     string
 		instance *servicediscovery.HttpInstanceSummary
-		want     []endpoint
+		want     *v1alpha3.ServiceEntry_Endpoint
 	}{
 		{
-			name: "Single endpoint from AWS_INSTANCE_IPV4 instance with AWS_INSTANCE_PORT set",
+			name: "Endpoint from AWS_INSTANCE_IPV4 instance with AWS_INSTANCE_PORT set to known proto",
+			instance: &servicediscovery.HttpInstanceSummary{
+				Attributes: map[string]*string{"AWS_INSTANCE_IPV4": &ipv41, "AWS_INSTANCE_PORT": &httpPortStr},
+			},
+			want: &v1alpha3.ServiceEntry_Endpoint{Address: ipv41, Ports: map[string]uint32{"http": 80}},
+		},
+		{
+			name: "Endpoint from AWS_INSTANCE_IPV4 instance with AWS_INSTANCE_PORT set to unknown proto",
 			instance: &servicediscovery.HttpInstanceSummary{
 				Attributes: map[string]*string{"AWS_INSTANCE_IPV4": &ipv41, "AWS_INSTANCE_PORT": &portStr},
 			},
-			want: []endpoint{endpoint{ipv41, port}},
+			want: &v1alpha3.ServiceEntry_Endpoint{Address: ipv41, Ports: map[string]uint32{"tcp": 9999}},
 		},
 		{
-			name: "Two endpoints for http and https from AWS_INSTANCE_IPV4 instance without a port",
+			name: "Endpoint infering http and https from AWS_INSTANCE_IPV4 instance without a port",
 			instance: &servicediscovery.HttpInstanceSummary{
 				Attributes: map[string]*string{"AWS_INSTANCE_IPV4": &ipv41},
 			},
-			want: []endpoint{endpoint{ipv41, 80}, endpoint{ipv41, 443}},
+			want: &inferedIPv41Endpoint,
 		},
 		{
-			name: "Two endpoints for http and https from AWS_INSTANCE_IPV4 instance with non-int port",
+			name: "Endpoint infering http and https from AWS_INSTANCE_IPV4 instance with non-int port",
 			instance: &servicediscovery.HttpInstanceSummary{
 				Attributes: map[string]*string{"AWS_INSTANCE_IPV4": &ipv41, "AWS_INSTANCE_PORT": &hostname},
 			},
-			want: []endpoint{endpoint{ipv41, 80}, endpoint{ipv41, 443}},
+			want: &inferedIPv41Endpoint,
 		},
 		{
-			name: "No endpoints for instance with AWS_ALIAS_DNS_NAME",
+			name: "Nil for instance with AWS_ALIAS_DNS_NAME",
 			instance: &servicediscovery.HttpInstanceSummary{
 				InstanceId: &subdomain, ServiceName: &subdomain, NamespaceName: &hostname,
 				Attributes: map[string]*string{"AWS_ALIAS_DNS_NAME": &hostname},
 			},
-			want: []endpoint{},
+			want: nil,
 		},
 	}
 	for _, tt := range tests {
