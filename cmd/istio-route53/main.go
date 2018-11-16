@@ -85,14 +85,15 @@ func serve() (serve *cobra.Command) {
 				return nil
 			})
 
-			store := serviceentry.New(id)
+			seStore := serviceentry.New(id)
 			if debug {
-				store = serviceentry.NewLoggingStore(store, log.Printf)
+				seStore = serviceentry.NewLoggingStore(seStore, log.Printf)
 			}
+			cmStore := route53.NewStore()
 
 			ctx := context.Background() // common context for cancellation across all loops/routines
 			log.Print("Starting Route53 watcher")
-			r53Watcher, err := route53.NewWatcher()
+			r53Watcher, err := route53.NewWatcher(cmStore)
 			if err != nil {
 				return err
 			}
@@ -100,7 +101,7 @@ func serve() (serve *cobra.Command) {
 
 			log.Printf("Watching %s.%s across all namespaces with resync period %d and id %q", apiType, kind, resyncPeriod, id)
 			sdk.Watch(apiType, kind, allNamespaces, resyncPeriod)
-			sdk.Handle(serviceentry.NewHandler(store))
+			sdk.Handle(serviceentry.NewHandler(seStore))
 			sdk.Run(ctx)
 			return nil
 		},

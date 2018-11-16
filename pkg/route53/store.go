@@ -2,49 +2,51 @@ package route53
 
 import (
 	"sync"
+
+	"istio.io/api/networking/v1alpha3"
 )
 
 type (
-	// Store describes a set of endpoint objects from Cloud Map stored by the hostnames that own them.
+	// Store describes a set of Istio endpoint objects from Cloud Map stored by the hostnames that own them.
 	Store interface {
 		// Hosts are all hosts Cloud Map has told us about
-		Hosts() map[string][]endpoint
+		Hosts() map[string][]v1alpha3.ServiceEntry_Endpoint
 
 		// Set updates the cache to reflect the new state
 		// Private to ensure this store is read-only outside of this package
-		set(hosts map[string][]endpoint)
+		set(hosts map[string][]v1alpha3.ServiceEntry_Endpoint)
 	}
 
 	store struct {
 		m     *sync.RWMutex
-		hosts map[string][]endpoint // maps host->endpoints
+		hosts map[string][]v1alpha3.ServiceEntry_Endpoint // maps host->Endpoints
 	}
 )
 
-// New returns a new store which stores Cloud Map data
-func New() Store {
+// NewStore returns a store for Cloud Map data
+func NewStore() Store {
 	return &store{
-		hosts: make(map[string][]endpoint),
+		hosts: make(map[string][]v1alpha3.ServiceEntry_Endpoint),
 		m:     &sync.RWMutex{},
 	}
 }
 
-func (s *store) Hosts() map[string][]endpoint {
+func (s *store) Hosts() map[string][]v1alpha3.ServiceEntry_Endpoint {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	return copyMap(s.hosts)
 }
 
-func (s *store) set(hosts map[string][]endpoint) {
+func (s *store) set(hosts map[string][]v1alpha3.ServiceEntry_Endpoint) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.hosts = copyMap(hosts)
 }
 
-func copyMap(m map[string][]endpoint) map[string][]endpoint {
-	out := make(map[string][]endpoint, len(m))
+func copyMap(m map[string][]v1alpha3.ServiceEntry_Endpoint) map[string][]v1alpha3.ServiceEntry_Endpoint {
+	out := make(map[string][]v1alpha3.ServiceEntry_Endpoint, len(m))
 	for k, v := range m {
-		eps := make([]endpoint, 0) // len 0 forces new slice creation when appending
+		eps := make([]v1alpha3.ServiceEntry_Endpoint, 0) // len 0 forces new slice creation when appending
 		eps = append(eps, v...)
 		out[k] = eps
 	}
