@@ -76,22 +76,22 @@ func TestWatcher_refreshCache(t *testing.T) {
 		want        map[string][]endpoint
 	}{
 		{
-			name:        "cache gets updated",
+			name:        "store gets updated",
 			listNsRes:   goldenPathListNamespaces,
 			listSvcRes:  goldenPathListServices,
 			discInstRes: goldenPathDiscoverInstances,
 			want:        map[string][]endpoint{"demo.tetrate.io": []endpoint{endpoint{ipv41, 80}, endpoint{ipv41, 443}}},
 		},
 		{
-			name:      "cache unchanged on ListNamespace error",
+			name:      "store unchanged on ListNamespace error",
 			listNsErr: errors.New("bang"),
-			want:      nil,
+			want:      map[string][]endpoint{},
 		},
 		{
-			name:       "cache unchanged on ListService error",
+			name:       "store unchanged on ListService error",
 			listNsRes:  goldenPathListNamespaces,
 			listSvcErr: errors.New("bang"),
-			want:       nil,
+			want:       map[string][]endpoint{},
 		},
 	}
 	for _, tt := range tests {
@@ -101,10 +101,10 @@ func TestWatcher_refreshCache(t *testing.T) {
 				ListSvcResult: tt.listSvcRes, ListSvcErr: tt.listSvcErr,
 				DiscInstResult: tt.discInstRes, DiscInstErr: tt.discInstErr,
 			}
-			w := &Watcher{cloudmap: mockAPI, r53: mockAPI}
-			w.refreshCache()
-			if !reflect.DeepEqual(w.hostCache, tt.want) {
-				t.Errorf("Watcher.hostCache() = %v, want %v", w.hostCache, tt.want)
+			w := &Watcher{cloudmap: mockAPI, r53: mockAPI, store: New()}
+			w.refreshStore()
+			if !reflect.DeepEqual(w.store.Hosts(), tt.want) {
+				t.Errorf("Watcher.store = %v, want %v", w.store.Hosts(), tt.want)
 			}
 		})
 	}
