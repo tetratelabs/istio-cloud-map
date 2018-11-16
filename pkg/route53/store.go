@@ -38,13 +38,15 @@ func (s *store) Hosts() map[string][]endpoint {
 func (s *store) set(hosts map[string][]endpoint) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	s.hosts = hosts
+	s.hosts = copyMap(hosts)
 }
 
 func copyMap(m map[string][]endpoint) map[string][]endpoint {
 	out := make(map[string][]endpoint, len(m))
 	for k, v := range m {
-		out[k] = v
+		eps := make([]endpoint, 0) // len 0 forces new slice creation when appending
+		eps = append(eps, v...)
+		out[k] = eps
 	}
 	return out
 }
