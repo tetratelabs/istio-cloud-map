@@ -23,7 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var serviceEntryGroupVersionKind = schema.GroupVersionKind{
+// GroupVersionKind declares the CRD version to be used
+var GroupVersionKind = schema.GroupVersionKind{
 	Group:   "networking.istio.io",
 	Version: "v1alpha3",
 	Kind:    "ServiceEntry",
@@ -42,7 +43,7 @@ type handler struct {
 func (h handler) Handle(ctx context.Context, event sdk.Event) error {
 	switch cr := event.Object.(type) {
 	case crd.IstioObject:
-		if !reflect.DeepEqual(cr.GetObjectKind().GroupVersionKind(), serviceEntryGroupVersionKind) {
+		if !reflect.DeepEqual(cr.GetObjectKind().GroupVersionKind(), GroupVersionKind) {
 			return nil
 		}
 		if event.Deleted {

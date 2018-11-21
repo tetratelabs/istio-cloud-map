@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: istio-route53-operator
+  namespace: istio-system
   labels:
     app: istio-route53
 spec:
@@ -17,7 +18,7 @@ spec:
       serviceAccountName: istio-route53-service-account
       containers:
       - name: istio-route53-server
-        image: gcr.io/tetratelabs/istio-route53:v0.1
+        image:  gcr.io/tetratelabs/istio-route53:v0.1
         imagePullPolicy: Always
         args:
         - serve
@@ -26,3 +27,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              key: access-key-id
+              name: aws-credz
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: secret-access-key
+              name: aws-credz

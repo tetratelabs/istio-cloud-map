@@ -18,6 +18,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/tetratelabs/istio-route53/pkg/control"
 	"github.com/tetratelabs/istio-route53/pkg/route53"
 
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
@@ -85,7 +86,15 @@ func serve() (serve *cobra.Command) {
 				return nil
 			})
 
-			istio := serviceentry.New(id)
+			t := true
+			owner := v1.OwnerReference{
+				APIVersion: "route53.istio.io",
+				Kind:       "ServiceController",
+				Name:       id,
+				Controller: &t,
+			}
+
+			istio := serviceentry.New(owner)
 			if debug {
 				istio = serviceentry.NewLoggingStore(istio, log.Printf)
 			}
@@ -98,6 +107,13 @@ func serve() (serve *cobra.Command) {
 				return err
 			}
 			go r53Watcher.Run(ctx)
+
+			log.Print("Starting Synchronizer control loop")
+			sync, err := control.NewSynchronizer(owner, istio, cloudMap, kubeConfig)
+			if err != nil {
+				return err
+			}
+			go sync.Run(ctx)
 
 			log.Printf("Watching %s.%s across all namespaces with resync period %d and id %q", apiType, kind, resyncPeriod, id)
 			sdk.Watch(apiType, kind, allNamespaces, resyncPeriod)
