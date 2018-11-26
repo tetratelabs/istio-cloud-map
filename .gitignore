@@ -3,5 +3,4 @@ vendor
 istio-route53
 docker/istio-route53-static
 aws
-demo/
 .makerc
