@@ -18,7 +18,7 @@ spec:
       serviceAccountName: istio-route53-service-account
       containers:
       - name: istio-route53-server
-        image:  gcr.io/tetratelabs/istio-route53:v0.1
+        image: gcr.io/tetratelabs/istio-route53:v0.1
         imagePullPolicy: Always
         args:
         - serve

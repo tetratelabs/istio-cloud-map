@@ -24,7 +24,7 @@ func ServiceEntry(owner v1.OwnerReference, host string, endpoints []*v1alpha3.Se
 		ConfigMeta: model.ConfigMeta{
 			Name: ServiceEntryName(host),
 			Type: model.ServiceEntry.Type,
-			// This is concatenation is to placate weird Istio behaviour; not sure if bug with Istio code?
+			// This concatenation is to placate weird Istio behaviour; not sure if bug with Istio code?
 			Group:   model.ServiceEntry.Group + model.IstioAPIGroupDomain,
 			Version: model.ServiceEntry.Version,
 			Domain:  model.IstioAPIGroupDomain,
