@@ -55,7 +55,7 @@ spec:
   resolution: STATIC
 ```
 
->Note: If you need to be able to resolve your services via DNS (as opposed to making the requests to a random IP and setting the Host header), install the [Istio CoreDNS plugin](https://github.com/istio-ecosystem/istio-coredns-plugin).
+> Note: If you need to be able to resolve your services via DNS (as opposed to making the requests to a random IP and setting the Host header), either enable DNS propagation in your VPC peering configuration or install the [Istio CoreDNS plugin](https://github.com/istio-ecosystem/istio-coredns-plugin).
 
 ## Building
 
