@@ -1,6 +1,61 @@
-# Istio Route53 Operator
+# Istio Cloud Map Operator
 
 This repo contains an operator for syncing Route53 data into Istio by pushing ServiceEntry CRDs to the Kube API server.
+
+## Deploying to your Kubernetes cluster
+
+1. Create an [AWS IAM identity](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_access-management.html) with read access to AWS Cloud Map.
+2. Create a Kubernetes secret with the Access Key ID and Secret Access Key of the identity you just created in the namespace you want to deploy the Istio Cloud Map Operator:
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-credz
+  namespace: istio-system
+type: Opaque
+data:
+  access-key-id: <base64-encoded-IAM-access-key-id>
+  secret-access-key: <base64-encoded-IAM-secret-access-key>
+```
+3. Deploy the Istio Cloud Map Operator:
+```bash
+$ kubectl apply -f kubernetes/deployment.yaml -f kubernetes/rbac.yaml
+```
+4. Verify that your Service Entries have been populated with the information in Cloud Map
+```bash
+$ kubectl get serviceentries
+NAME                                       CREATED AT
+cloudmap-dev.null.demo.tetrate.io          17h
+cloudmap-test-server.cloudmap.tetrate.io   17h
+```
+```yaml
+$ kubectl get serviceentries cloudmap-test-server.cloudmap.tetrate.io -o yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: cloudmap-test-server.cloudmap.tetrate.io
+  namespace: default
+spec:
+  addresses:
+  - 172.31.37.168
+  endpoints:
+  - address: 172.31.37.168
+    ports:
+      http: 80
+      https: 443
+  hosts:
+  - test-server.cloudmap.tetrate.io
+  ports:
+  - name: http
+    number: 80
+    protocol: HTTP
+  - name: https
+    number: 443
+    protocol: HTTPS
+  resolution: STATIC
+```
+
+>Note: If you need to be able to resolve your services via DNS (as opposed to making the requests to a random IP and setting the Host header), install the [Istio CoreDNS plugin](https://github.com/istio-ecosystem/istio-coredns-plugin).
 
 ## Building
 
@@ -35,7 +90,7 @@ dep ensure
 go build -o istio-route53 github.com/tetratelabs/istio-route53/cmd/istio-route53
 ``` 
 
-## Running
+## Running Locally
 
 To run locally:
 ```bash
