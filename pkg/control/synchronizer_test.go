@@ -3,10 +3,10 @@ package control
 import (
 	"testing"
 
-	"github.com/tetratelabs/istio-route53/pkg/infer"
-	cmMock "github.com/tetratelabs/istio-route53/pkg/route53/mock"
-	"github.com/tetratelabs/istio-route53/pkg/serviceentry"
-	seMock "github.com/tetratelabs/istio-route53/pkg/serviceentry/mock"
+	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
+	cmMock "github.com/tetratelabs/istio-cloud-map/pkg/cloud-map/mock"
+	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
+	seMock "github.com/tetratelabs/istio-cloud-map/pkg/serviceentry/mock"
 
 	"istio.io/api/networking/v1alpha3"
 	"istio.io/istio/pilot/pkg/config/kube/crd"

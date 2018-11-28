@@ -1,6 +1,6 @@
 # override to push to a different registry or tag the image differently
-REGISTRY ?= gcr.io/tetratelabs
-TAG ?= v0.1
+CONTAINER_REGISTRY ?= gcr.io/tetratelabs
+CONTAINER_TAG ?= v0.1
 
 # Make sure we pick up any local overrides.
 -include .makerc
@@ -14,33 +14,33 @@ $(DEP):
 	@go get github.com/golang/dep/cmd/dep
 
 
-build: istio-route53
-istio-route53:
-	go build -o istio-route53 github.com/tetratelabs/istio-route53/cmd/istio-route53
-	chmod +x istio-route53
+build: istio-cloud-map
+istio-cloud-map:
+	go build -o istio-cloud-map github.com/tetratelabs/istio-cloud-map/cmd/istio-cloud-map
+	chmod +x istio-cloud-map
 
-run: istio-route53
-	./istio-route53 serve --kube-config ~/.kube/config
+run: istio-cloud-map
+	./istio-cloud-map serve --kube-config ~/.kube/config
 
 
-build-static: docker/istio-route53-static
+build-static: docker/istio-cloud-map-static
 
-docker/istio-route53-static:
+docker/istio-cloud-map-static:
 	cp -Rf aws/ vendor/github.com/aws
 	GOOS=linux go build \
 		-a --ldflags '-extldflags "-static"' -tags netgo -installsuffix netgo \
-		-o docker/istio-route53-static github.com/tetratelabs/istio-route53/cmd/istio-route53
-	chmod +x docker/istio-route53-static
+		-o docker/istio-cloud-map-static github.com/tetratelabs/istio-cloud-map/cmd/istio-cloud-map
+	chmod +x docker/istio-cloud-map-static
 
-docker-build: docker/istio-route53-static
-	docker build -t $(REGISTRY)/istio-route53:$(TAG) docker/
+docker-build: docker/istio-cloud-map-static
+	docker build -t $(REGISTRY)/istio-cloud-map:$(TAG) docker/
 
 docker-push: docker-build
-	docker push $(REGISTRY)/istio-route53:$(TAG)
+	docker push $(REGISTRY)/istio-cloud-map:$(TAG)
 
 docker-run: docker-build
 	# local run, mounting kube config into the container and allowing it to use a host network to access the remote cluster
 	@docker run \
-		-v ~/.kube/config:/etc/istio-route53/kube-config \
+		-v ~/.kube/config:/etc/istio-cloud-map/kube-config \
 		--network host \
-		$(REGISTRY)/istio-route53:$(TAG) serve --kube-config /etc/istio-route53/kube-config
+		$(REGISTRY)/istio-cloud-map:$(TAG) serve --kube-config /etc/istio-cloud-map/kube-config

@@ -1,6 +1,6 @@
-# Istio Route53 Operator
+# Istio Cloud Map Operator
 
-This repo contains an operator for syncing Route53 data into Istio by pushing ServiceEntry CRDs to the Kube API server.
+This repo contains an operator for syncing Cloud Map data into Istio by pushing ServiceEntry CRDs to the Kube API server.
 
 ## Building
 
@@ -32,7 +32,7 @@ env CONTAINER_REGISTRY=gcr.io/tetratelabs CONTAINER_TAG=v0.1 \
 Alternatively, just use `go`:
 ```bash
 dep ensure
-go build -o istio-route53 github.com/tetratelabs/istio-route53/cmd/istio-route53
+go build -o istio-cloud-map github.com/tetratelabs/istio-cloud-map/cmd/istio-cloud-map
 ``` 
 
 ## Running
@@ -46,8 +46,8 @@ make docker-run
 
 or via go:
 ```bash
-go build -o istio-route53 github.com/tetratelabs/istio-route53/cmd/istio-route53
-./istio-route53 serve --kube-config ~/.kube/config
+go build -o istio-cloud-map github.com/tetratelabs/istio-cloud-map/cmd/istio-cloud-map
+./istio-cloud-map serve --kube-config ~/.kube/config
 ```
 
 In particular the controller needs its `--kube-config` flag set to talk to the remote API server. If no flag is set, the controller assumes it is deployed into a Kubernetes cluster and attempts to contact the API server directly.

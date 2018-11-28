@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: istio-route53-operator
+  name: istio-cloud-map-operator
   namespace: istio-system
   labels:
-    app: istio-route53
+    app: istio-cloud-map
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: istio-route53
+      app: istio-cloud-map
   template:
     metadata:
       labels:
-        app: istio-route53
+        app: istio-cloud-map
     spec:
-      serviceAccountName: istio-route53-service-account
+      serviceAccountName: istio-cloud-map-service-account
       containers:
-      - name: istio-route53-server
-        image: gcr.io/tetratelabs/istio-route53:v0.1
+      - name: istio-cloud-map-server
+        image: gcr.io/tetratelabs/istio-cloud-map:v0.1
         imagePullPolicy: Always
         args:
         - serve

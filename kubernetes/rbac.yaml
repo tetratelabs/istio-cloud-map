@@ -1,9 +1,9 @@
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
-  name: istio-route53-service-entry-role
+  name: istio-cloud-map-service-entry-role
   labels:
-    app: istio-route53
+    app: istio-cloud-map
 rules:
 # ServiceEntries
 - apiGroups: ["networking.istio.io"]
@@ -17,22 +17,22 @@ rules:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: istio-route53-service-account
+  name: istio-cloud-map-service-account
   namespace: istio-system
   labels:
-    app: istio-route53
+    app: istio-cloud-map
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
-  name: istio-route53-service-entry-rolebinding
+  name: istio-cloud-map-service-entry-rolebinding
   labels:
-    app: istio-route53
+    app: istio-cloud-map
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: istio-route53-service-entry-role
+  name: istio-cloud-map-service-entry-role
 subjects:
   - kind: ServiceAccount
-    name: istio-route53-service-account
+    name: istio-cloud-map-service-account
     namespace: istio-system

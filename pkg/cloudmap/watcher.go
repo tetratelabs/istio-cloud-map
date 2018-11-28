@@ -1,4 +1,4 @@
-package route53
+package cloudmap
 
 import (
 	"context"
@@ -9,7 +9,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/pkg/errors"
-	"github.com/tetratelabs/istio-route53/pkg/infer"
+	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
+
 	"istio.io/api/networking/v1alpha3"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -22,7 +23,7 @@ import (
 var serviceFilterNamespaceID = servicediscovery.ServiceFilterNameNamespaceId
 var filterConditionEquals = servicediscovery.FilterConditionEq
 
-// NewWatcher returns a Route53 watcher
+// NewWatcher returns a Cloud Map watcher
 func NewWatcher(store Store) (*Watcher, error) {
 	session, err := session.NewSession(&aws.Config{
 		// TODO: env vars aren't a secure way to pass secrets
@@ -36,16 +37,16 @@ func NewWatcher(store Store) (*Watcher, error) {
 
 	}
 
-	r53 := servicediscovery.New(session)
+	cm := servicediscovery.New(session)
 	cloudmap := servicediscovery.New(session)
 	cloudmap.Endpoint = "https://data-servicediscovery.us-west-2.amazonaws.com"
 
-	return &Watcher{r53: r53, cloudmap: cloudmap, store: store, interval: time.Second * 5}, nil
+	return &Watcher{cm: cm, cloudmap: cloudmap, store: store, interval: time.Second * 5}, nil
 }
 
-// Watcher polls Route53 and caches a list of services and their instances
+// Watcher polls Cloud Map and caches a list of services and their instances
 type Watcher struct {
-	r53      servicediscoveryiface.ServiceDiscoveryAPI
+	cm       servicediscoveryiface.ServiceDiscoveryAPI
 	cloudmap servicediscoveryiface.ServiceDiscoveryAPI
 	store    Store
 	interval time.Duration
@@ -67,11 +68,11 @@ func (w *Watcher) Run(ctx context.Context) {
 }
 
 func (w *Watcher) refreshStore() {
-	log.Print("Syncing Route53 store")
+	log.Print("Syncing Cloud Map store")
 	// TODO: allow users to specify namespaces to watch
-	nsResp, err := w.r53.ListNamespaces(&servicediscovery.ListNamespacesInput{})
+	nsResp, err := w.cm.ListNamespaces(&servicediscovery.ListNamespacesInput{})
 	if err != nil {
-		log.Printf("error retrieving namespace list from Route53: %v", err)
+		log.Printf("error retrieving namespace list from Cloud Map: %v", err)
 		return
 	}
 	// We want to continue to use existing store on error
@@ -79,7 +80,7 @@ func (w *Watcher) refreshStore() {
 	for _, ns := range nsResp.Namespaces {
 		hosts, err := w.hostsForNamespace(ns)
 		if err != nil {
-			log.Printf("unable to refresh route 53 cache due to error, using existing cache: %v", err)
+			log.Printf("unable to refresh Cloud Map cache due to error, using existing cache: %v", err)
 			return
 		}
 		// Hosts are "svcName.nsName" so by definition can't be the same across namespaces or services
@@ -87,13 +88,13 @@ func (w *Watcher) refreshStore() {
 			tempStore[host] = eps
 		}
 	}
-	log.Print("Route53 store sync successful")
+	log.Print("Cloud Map store sync successful")
 	w.store.(*store).set(tempStore)
 }
 
 func (w *Watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[string][]*v1alpha3.ServiceEntry_Endpoint, error) {
 	hosts := map[string][]*v1alpha3.ServiceEntry_Endpoint{}
-	svcResp, err := w.r53.ListServices(&servicediscovery.ListServicesInput{
+	svcResp, err := w.cm.ListServices(&servicediscovery.ListServicesInput{
 		Filters: []*servicediscovery.ServiceFilter{
 			&servicediscovery.ServiceFilter{
 				Name:      &serviceFilterNamespaceID,
@@ -103,7 +104,7 @@ func (w *Watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[
 		},
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error retrieving service list from Route53 for namespace %q", *ns.Name)
+		return nil, errors.Wrapf(err, "error retrieving service list from Cloud Map for namespace %q", *ns.Name)
 	}
 	for _, svc := range svcResp.Services {
 		host := fmt.Sprintf("%v.%v", *svc.Name, *ns.Name)
@@ -121,7 +122,7 @@ func (w *Watcher) endpointsForService(svc *servicediscovery.ServiceSummary, ns *
 	// TODO: use health filter?
 	instOutput, err := w.cloudmap.DiscoverInstances(&servicediscovery.DiscoverInstancesInput{ServiceName: svc.Name, NamespaceName: ns.Name})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error retrieving instance list from Route53 for %q in %q", *svc.Name, *ns.Name)
+		return nil, errors.Wrapf(err, "error retrieving instance list from Cloud Map for %q in %q", *svc.Name, *ns.Name)
 	}
 	// Inject host based instance if there are no instances
 	if len(instOutput.Instances) == 0 {
