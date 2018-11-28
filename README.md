@@ -4,7 +4,7 @@ This repo contains an operator for syncing Route53 data into Istio by pushing Se
 
 ## Deploying to your Kubernetes cluster
 
-1. Create an [AWS IAM identity](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_access-management.html) with read access to AWS Cloud Map.
+1. Create an [AWS IAM identity](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_access-management.html) with read access to AWS Cloud Map for the operator to use.
 2. Create a Kubernetes secret with the Access Key ID and Secret Access Key of the identity you just created in the namespace you want to deploy the Istio Cloud Map Operator:
 ```yaml
 apiVersion: v1
