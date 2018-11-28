@@ -21,7 +21,7 @@ data:
 ```bash
 $ kubectl apply -f kubernetes/deployment.yaml -f kubernetes/rbac.yaml
 ```
-4. Verify that your Service Entries have been populated with the information in Cloud Map
+4. Verify that your ServiceEntries have been populated with the information in Cloud Map; there should be one ServiceEntry for every service in Cloud Map:
 ```bash
 $ kubectl get serviceentries
 NAME                                       CREATED AT
