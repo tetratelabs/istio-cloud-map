@@ -26,6 +26,14 @@ import (
 
 var (
 	id = "123"
+	t  = true
+
+	baseOwner = v1.OwnerReference{
+		APIVersion: "route53.istio.io",
+		Kind:       "ServiceController",
+		Name:       id,
+		Controller: &t,
+	}
 
 	noOwners = createIstioObject(
 		&v1alpha3.ServiceEntry{
@@ -37,14 +45,19 @@ var (
 		&v1alpha3.ServiceEntry{
 			Hosts: []string{"1.us", "2.us"},
 		},
-		ownerRef(id),
+		baseOwner,
 	)
 
 	them = createIstioObject(
 		&v1alpha3.ServiceEntry{
 			Hosts: []string{"1.them", "2.them", "3.them"},
 		},
-		ownerRef("789"),
+		v1.OwnerReference{
+			APIVersion: "route53.istio.io",
+			Kind:       "ServiceController",
+			Name:       "789",
+			Controller: &t,
+		},
 	)
 )
 
@@ -93,7 +106,7 @@ func TestInsert(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			underTest := NewLoggingStore(New(id), t.Logf)
+			underTest := NewLoggingStore(New(baseOwner), t.Logf)
 			for _, o := range tt.crs {
 				if err := underTest.Insert(o); err != nil {
 					t.Fatalf("New(%q).Insert(%v) = %v wanted no err", id, o, err)
@@ -170,7 +183,7 @@ func TestDelete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			underTest := NewLoggingStore(New(id), t.Logf)
+			underTest := NewLoggingStore(New(baseOwner), t.Logf)
 			for _, o := range []crd.IstioObject{noOwners, us, them} {
 				if err := underTest.Insert(o); err != nil {
 					t.Fatalf("New(%q).Insert(%v) = %v wanted no err", id, o, err)
@@ -250,7 +263,7 @@ func TestClassify(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			underTest := NewLoggingStore(New(id), t.Logf)
+			underTest := NewLoggingStore(New(baseOwner), t.Logf)
 			for _, o := range tt.crs {
 				if err := underTest.Insert(o); err != nil {
 					t.Fatalf("New(%q).Insert(%v) = %v wanted no err", id, o, err)

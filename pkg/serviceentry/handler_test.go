@@ -84,20 +84,11 @@ func TestHandle(t *testing.T) {
 
 type fakeStore struct {
 	inserted, deleted int32
+	store
 }
 
 func (fakeStore) Classify(host string) Owner {
 	return None
-}
-
-// Ours are ServiceEntries managed by us
-func (fakeStore) Ours() map[string]*Entry {
-	return map[string]*Entry{}
-}
-
-// Theirs are ServiceEntries managed by any other system
-func (fakeStore) Theirs() map[string]*Entry {
-	return map[string]*Entry{}
 }
 
 // Insert adds a ServiceEntry to the store (detecting who it belongs to)

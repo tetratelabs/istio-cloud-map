@@ -8,7 +8,7 @@ rules:
 # ServiceEntries
 - apiGroups: ["networking.istio.io"]
   resources: ["serviceentries"]
-  verbs: ["create", "get", "list", "watch", "patch"]
+  verbs: ["create", "get", "list", "watch", "patch", "delete", "update"]
 # We create a service at startup to host our metrics endpoint
 - apiGroups: [""]
   resources: ["services"]
@@ -18,7 +18,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: istio-route53-service-account
-  namespace: default
+  namespace: istio-system
   labels:
     app: istio-route53
 ---
@@ -35,4 +35,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: istio-route53-service-account
-    namespace: default
+    namespace: istio-system

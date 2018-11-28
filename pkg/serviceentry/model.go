@@ -45,11 +45,9 @@ type (
 
 		// Delete removes a ServiceEntry from the store
 		Delete(cr crd.IstioObject) error
-	}
 
-	Entry struct {
-		meta v1.ObjectMeta
-		spec *v1alpha3.ServiceEntry
+		// OwnerReference is used to label new entries as owned by this store
+		OwnerReference() v1.OwnerReference
 	}
 
 	store struct {
@@ -69,9 +67,9 @@ const (
 )
 
 // New returns a new store which manages resources marked by the provided ID
-func New(id string) Store {
+func New(ownerRef v1.OwnerReference) Store {
 	return &store{
-		ref:    ownerRef(id),
+		ref:    ownerRef,
 		ours:   make(map[string]*Entry),
 		theirs: make(map[string]*Entry),
 	}
@@ -97,6 +95,10 @@ func (s *store) Ours() map[string]*Entry {
 	return copyMap(s.ours)
 }
 
+func (s *store) OwnerReference() v1.OwnerReference {
+	return s.ref
+}
+
 func (s *store) Theirs() map[string]*Entry {
 	s.m.RLock()
 	defer s.m.RUnlock()
@@ -111,18 +113,18 @@ func (s *store) Insert(cr crd.IstioObject) error {
 
 	owner := owner(s.ref, cr.GetObjectMeta().OwnerReferences)
 	entry := &Entry{
-		meta: cr.GetObjectMeta(),
-		spec: cfg.Spec.(*v1alpha3.ServiceEntry),
+		Meta: cr.GetObjectMeta(),
+		Spec: cfg.Spec.(*v1alpha3.ServiceEntry),
 	}
 	// as a single update, we insert all hosts owned by the ServiceEntry
 	s.m.Lock()
 	switch owner {
 	case None, Us:
-		for _, host := range entry.spec.Hosts {
+		for _, host := range entry.Spec.Hosts {
 			s.ours[host] = entry
 		}
 	case Them:
-		for _, host := range entry.spec.Hosts {
+		for _, host := range entry.Spec.Hosts {
 			s.theirs[host] = entry
 		}
 	}
@@ -181,16 +183,6 @@ func copyMap(m map[string]*Entry) map[string]*Entry {
 	return out
 }
 
-func ownerRef(id string) v1.OwnerReference {
-	t := true
-	return v1.OwnerReference{
-		APIVersion: "route53.istio.io",
-		Kind:       "ServiceController",
-		Name:       id,
-		Controller: &t,
-	}
-}
-
 // LoggingStore wraps another Store and logs its operations using the log function.
 type LoggingStore struct {
 	log func(fmt string, args ...interface{})
@@ -201,6 +193,10 @@ type LoggingStore struct {
 // log.Printf satisfies the signature for log.
 func NewLoggingStore(s Store, log func(fmt string, args ...interface{})) Store {
 	return LoggingStore{log, s}
+}
+
+func (l LoggingStore) OwnerReference() v1.OwnerReference {
+	return l.s.OwnerReference()
 }
 
 // Based on the data in the store, classify the host as belonging to us, them, or no one.
