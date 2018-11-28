@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type Synchronizer struct {
+type synchronizer struct {
 	owner        v1.OwnerReference
 	serviceEntry serviceentry.Store
 	cloudMap     route53.Store
@@ -24,22 +24,19 @@ type Synchronizer struct {
 	interval     time.Duration
 }
 
-func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, cloudMap route53.Store, kubeConfig string) (*Synchronizer, error) {
+func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, cloudMap route53.Store, kubeConfig string) (*synchronizer, error) {
 	istio, err := crd.NewClient(kubeConfig, "", model.IstioConfigTypes, "")
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to create synchronizer")
-	}
-	return &Synchronizer{
+	return &synchronizer{
 		owner:        owner,
 		serviceEntry: serviceEntry,
 		cloudMap:     cloudMap,
 		istio:        istio,
 		interval:     time.Second * 5,
-	}, nil
+	}, errors.Wrap(err, "unable to create synchronizer")
 }
 
 // Run the synchronizer until the context is cancelled
-func (s *Synchronizer) Run(ctx context.Context) {
+func (s *synchronizer) Run(ctx context.Context) {
 	tick := time.NewTicker(s.interval).C
 	for {
 		select {
@@ -51,7 +48,7 @@ func (s *Synchronizer) Run(ctx context.Context) {
 	}
 }
 
-func (s *Synchronizer) sync() {
+func (s *synchronizer) sync() {
 	// Entries are generated per host; entirely from information in the slice of endpoints;
 	// so we only actually need to compare the current endpoints with the new endpoints.
 	for host, endpoints := range s.cloudMap.Hosts() {
@@ -64,7 +61,7 @@ func (s *Synchronizer) sync() {
 	s.garbageCollect()
 }
 
-func (s *Synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.ServiceEntry_Endpoint) {
+func (s *synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.ServiceEntry_Endpoint) {
 	newServiceEntry := infer.ServiceEntry(s.owner, host, endpoints)
 	if _, ok := s.serviceEntry.Ours()[host]; ok {
 		// If we have already created an identical service entry, return.
@@ -93,7 +90,7 @@ func (s *Synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.Service
 	log.Printf("created Service Entry %q, ResourceVersion is %q", infer.ServiceEntryName(host), rv)
 }
 
-func (s *Synchronizer) garbageCollect() {
+func (s *synchronizer) garbageCollect() {
 	for host := range s.serviceEntry.Ours() {
 		// If host no longer exists, delete service entry
 		if _, ok := s.cloudMap.Hosts()[host]; !ok {
