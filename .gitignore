@@ -1,5 +1,4 @@
 .idea
 vendor
 docker/istio-cloud-map-static
-aws
 .makerc
