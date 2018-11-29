@@ -26,7 +26,6 @@ run: istio-cloud-map
 build-static: docker/istio-cloud-map-static
 
 docker/istio-cloud-map-static:
-	cp -Rf aws/ vendor/github.com/aws
 	GOOS=linux go build \
 		-a --ldflags '-extldflags "-static"' -tags netgo -installsuffix netgo \
 		-o docker/istio-cloud-map-static github.com/tetratelabs/istio-cloud-map/cmd/istio-cloud-map

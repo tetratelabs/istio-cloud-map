@@ -22,6 +22,11 @@
   name = "k8s.io/client-go"
   version = "kubernetes-1.9.3"
 
-[[constraint]]
-  name = "github.com/operator-framework/operator-sdk"
-  branch = "master"
+[[override]]
+  name = "github.com/aws/aws-sdk-go"
+  version = "v1.15.86"
+
+[prune]
+  non-go = true
+  go-tests = true
+  unused-packages = true
