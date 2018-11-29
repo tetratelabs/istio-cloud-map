@@ -17,11 +17,12 @@ data:
   access-key-id: <base64-encoded-IAM-access-key-id>
   secret-access-key: <base64-encoded-IAM-secret-access-key>
 ```
-3. Deploy the Istio Cloud Map Operator:
+3. Edit the aws-config config map in `kubernetes/deployment.yaml` to choose the AWS Cloud Map region to sync with.
+4. Deploy the Istio Cloud Map Operator:
 ```bash
-$ kubectl apply -f kubernetes/deployment.yaml -f kubernetes/rbac.yaml
+$ kubectl apply -f kubernetes/rbac.yaml -f kubernetes/deployment.yaml
 ```
-4. Verify that your ServiceEntries have been populated with the information in Cloud Map; there should be one ServiceEntry for every service in Cloud Map:
+5. Verify that your ServiceEntries have been populated with the information in Cloud Map; there should be one ServiceEntry for every service in Cloud Map:
 ```bash
 $ kubectl get serviceentries
 NAME                                       CREATED AT
