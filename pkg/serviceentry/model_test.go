@@ -29,7 +29,7 @@ var (
 	t  = true
 
 	baseOwner = v1.OwnerReference{
-		APIVersion: "route53.istio.io",
+		APIVersion: "cloud-map.istio.io",
 		Kind:       "ServiceController",
 		Name:       id,
 		Controller: &t,
@@ -53,7 +53,7 @@ var (
 			Hosts: []string{"1.them", "2.them", "3.them"},
 		},
 		v1.OwnerReference{
-			APIVersion: "route53.istio.io",
+			APIVersion: "cloud-map.istio.io",
 			Kind:       "ServiceController",
 			Name:       "789",
 			Controller: &t,

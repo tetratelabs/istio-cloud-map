@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tetratelabs/istio-route53/pkg/infer"
-	"github.com/tetratelabs/istio-route53/pkg/route53"
-	"github.com/tetratelabs/istio-route53/pkg/serviceentry"
+	"github.com/tetratelabs/istio-cloud-map/pkg/cloudmap"
+	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
+	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
 	"istio.io/api/networking/v1alpha3"
 	"istio.io/istio/pilot/pkg/config/kube/crd"
 	"istio.io/istio/pilot/pkg/model"
@@ -19,12 +19,12 @@ import (
 type synchronizer struct {
 	owner        v1.OwnerReference
 	serviceEntry serviceentry.Store
-	cloudMap     route53.Store
+	cloudMap     cloudmap.Store
 	istio        model.ConfigStore
 	interval     time.Duration
 }
 
-func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, cloudMap route53.Store, kubeConfig string) (*synchronizer, error) {
+func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, cloudMap cloudmap.Store, kubeConfig string) (*synchronizer, error) {
 	istio, err := crd.NewClient(kubeConfig, "", model.IstioConfigTypes, "")
 	return &synchronizer{
 		owner:        owner,

@@ -18,8 +18,8 @@ import (
 	"context"
 	"log"
 
-	"github.com/tetratelabs/istio-route53/pkg/control"
-	"github.com/tetratelabs/istio-route53/pkg/route53"
+	"github.com/tetratelabs/istio-cloud-map/pkg/cloudmap"
+	"github.com/tetratelabs/istio-cloud-map/pkg/control"
 
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/spf13/cobra"
@@ -27,7 +27,7 @@ import (
 	"os"
 
 	"github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
-	"github.com/tetratelabs/istio-route53/pkg/serviceentry"
+	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
 	"istio.io/istio/pilot/pkg/config/kube/crd"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -54,8 +54,8 @@ func serve() (serve *cobra.Command) {
 	serve = &cobra.Command{
 		Use:     "serve",
 		Aliases: []string{"serve"},
-		Short:   "Starts the Istio-Route53 Operator server",
-		Example: "istio-route53 serve --id 123",
+		Short:   "Starts the Istio Cloud Map Operator server",
+		Example: "istio-cloud-map serve --id 123",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			// the operator-sdk code will panic if we don't set these:
@@ -88,7 +88,7 @@ func serve() (serve *cobra.Command) {
 
 			t := true
 			owner := v1.OwnerReference{
-				APIVersion: "route53.istio.io",
+				APIVersion: "cloudmap.istio.io",
 				Kind:       "ServiceController",
 				Name:       id,
 				Controller: &t,
@@ -98,15 +98,15 @@ func serve() (serve *cobra.Command) {
 			if debug {
 				istio = serviceentry.NewLoggingStore(istio, log.Printf)
 			}
-			cloudMap := route53.NewStore()
+			cloudMap := cloudmap.NewStore()
 
 			ctx := context.Background() // common context for cancellation across all loops/routines
-			log.Print("Starting Route53 watcher")
-			r53Watcher, err := route53.NewWatcher(cloudMap)
+			log.Print("Starting Cloud Map watcher")
+			cmWatcher, err := cloudmap.NewWatcher(cloudMap)
 			if err != nil {
 				return err
 			}
-			go r53Watcher.Run(ctx)
+			go cmWatcher.Run(ctx)
 
 			log.Print("Starting Synchronizer control loop")
 			sync, err := control.NewSynchronizer(owner, istio, cloudMap, kubeConfig)
@@ -124,7 +124,7 @@ func serve() (serve *cobra.Command) {
 	}
 
 	serve.PersistentFlags().StringVar(&id,
-		"id", "istio-route53-controller", "ID of this instance; instances will only ServiceEntries marked with their own ID.")
+		"id", "istio-cloud-map-operator", "ID of this instance; instances will only ServiceEntries marked with their own ID.")
 	serve.PersistentFlags().BoolVar(&debug, "debug", true, "if true, enables more logging")
 	serve.PersistentFlags().StringVar(&kubeConfig,
 		"kube-config", "", "kubeconfig location; if empty the server will assume it's in a cluster; for local testing use ~/.kube/config")
@@ -135,7 +135,7 @@ func serve() (serve *cobra.Command) {
 
 func main() {
 	root := &cobra.Command{
-		Short:   "istio-route53",
+		Short:   "istio-cloud-map",
 		Example: "",
 	}
 	// TODO: add other commands for listing services under management, etc.

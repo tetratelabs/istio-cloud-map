@@ -1,6 +1,5 @@
 .idea
 vendor
-istio-route53
-docker/istio-route53-static
+docker/istio-cloud-map-static
 aws
 .makerc

@@ -1,7 +1,7 @@
 package mock
 
 import (
-	"github.com/tetratelabs/istio-route53/pkg/serviceentry"
+	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
 	"istio.io/istio/pilot/pkg/config/kube/crd"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
