@@ -94,6 +94,7 @@ func (s *synchronizer) garbageCollect() {
 	for host := range s.serviceEntry.Ours() {
 		// If host no longer exists, delete service entry
 		if _, ok := s.cloudMap.Hosts()[host]; !ok {
+			// TODO: namespaces!
 			// TODO: Don't attempt to delete no owners
 			if err := s.istio.Delete(model.ServiceEntry.Type, infer.ServiceEntryName(host), "istio-system"); err != nil {
 				log.Printf("error deleting Service Entry %q: %v", infer.ServiceEntryName(host), err)
