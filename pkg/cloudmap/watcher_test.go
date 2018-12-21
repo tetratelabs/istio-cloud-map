@@ -107,7 +107,7 @@ func TestWatcher_refreshCache(t *testing.T) {
 				ListSvcResult: tt.listSvcRes, ListSvcErr: tt.listSvcErr,
 				DiscInstResult: tt.discInstRes, DiscInstErr: tt.discInstErr,
 			}
-			w := &Watcher{cloudmap: mockAPI, cm: mockAPI, store: NewStore()}
+			w := &Watcher{cloudmap: mockAPI, store: NewStore()}
 			w.refreshStore()
 			if !reflect.DeepEqual(w.store.Hosts(), tt.want) {
 				t.Errorf("Watcher.store = %v, want %v", w.store.Hosts(), tt.want)
@@ -163,7 +163,7 @@ func TestWatcher_hostsForNamespace(t *testing.T) {
 				DiscInstResult: tt.discInstRes, DiscInstErr: tt.discInstErr,
 				ListSvcResult: tt.listSvcRes, ListSvcErr: tt.listSvcErr,
 			}
-			w := &Watcher{cloudmap: mockAPI, cm: mockAPI}
+			w := &Watcher{cloudmap: mockAPI}
 			got, err := w.hostsForNamespace(tt.ns)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Watcher.hostsForNamespace() error = %v, wantErr %v", err, tt.wantErr)

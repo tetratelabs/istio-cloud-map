@@ -101,8 +101,12 @@ func serve() (serve *cobra.Command) {
 			cloudMap := cloudmap.NewStore()
 
 			ctx := context.Background() // common context for cancellation across all loops/routines
-			log.Print("Starting Cloud Map watcher")
-			cmWatcher, err := cloudmap.NewWatcher(cloudMap)
+			awsRegion := os.Getenv("AWS_REGION")
+			if awsRegion == "" {
+				log.Fatal("AWS_REGION env var not set, unable to continue")
+			}
+			log.Printf("Starting Cloud Map watcher in %q", awsRegion)
+			cmWatcher, err := cloudmap.NewWatcher(cloudMap, awsRegion)
 			if err != nil {
 				return err
 			}

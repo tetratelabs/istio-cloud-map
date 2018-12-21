@@ -24,29 +24,19 @@ var serviceFilterNamespaceID = servicediscovery.ServiceFilterNameNamespaceId
 var filterConditionEquals = servicediscovery.FilterConditionEq
 
 // NewWatcher returns a Cloud Map watcher
-func NewWatcher(store Store) (*Watcher, error) {
+func NewWatcher(store Store, region string) (*Watcher, error) {
 	session, err := session.NewSession(&aws.Config{
-		// TODO: env vars aren't a secure way to pass secrets
 		Credentials: credentials.NewEnvCredentials(),
-
-		// TODO: don't hardcode region
-		Region: aws.String("us-west-2"),
+		Region:      aws.String(region),
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "error setting up AWS session")
-
 	}
-
-	cm := servicediscovery.New(session)
-	cloudmap := servicediscovery.New(session)
-	cloudmap.Endpoint = "https://data-servicediscovery.us-west-2.amazonaws.com"
-
-	return &Watcher{cm: cm, cloudmap: cloudmap, store: store, interval: time.Second * 5}, nil
+	return &Watcher{cloudmap: servicediscovery.New(session), store: store, interval: time.Second * 5}, nil
 }
 
 // Watcher polls Cloud Map and caches a list of services and their instances
 type Watcher struct {
-	cm       servicediscoveryiface.ServiceDiscoveryAPI
 	cloudmap servicediscoveryiface.ServiceDiscoveryAPI
 	store    Store
 	interval time.Duration
@@ -70,7 +60,7 @@ func (w *Watcher) Run(ctx context.Context) {
 func (w *Watcher) refreshStore() {
 	log.Print("Syncing Cloud Map store")
 	// TODO: allow users to specify namespaces to watch
-	nsResp, err := w.cm.ListNamespaces(&servicediscovery.ListNamespacesInput{})
+	nsResp, err := w.cloudmap.ListNamespaces(&servicediscovery.ListNamespacesInput{})
 	if err != nil {
 		log.Printf("error retrieving namespace list from Cloud Map: %v", err)
 		return
@@ -94,7 +84,7 @@ func (w *Watcher) refreshStore() {
 
 func (w *Watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[string][]*v1alpha3.ServiceEntry_Endpoint, error) {
 	hosts := map[string][]*v1alpha3.ServiceEntry_Endpoint{}
-	svcResp, err := w.cm.ListServices(&servicediscovery.ListServicesInput{
+	svcResp, err := w.cloudmap.ListServices(&servicediscovery.ListServicesInput{
 		Filters: []*servicediscovery.ServiceFilter{
 			&servicediscovery.ServiceFilter{
 				Name:      &serviceFilterNamespaceID,

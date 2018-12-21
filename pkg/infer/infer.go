@@ -84,7 +84,6 @@ func Ports(endpoints []*v1alpha3.ServiceEntry_Endpoint) []*v1alpha3.Port {
 
 // Resolution infers STATIC resolution if there are endpoints
 // If there are no endpoints it infers DNS; otherwise will return STATIC
-// TODO: this will probably need to be changed when we support non-IP based addresses
 func Resolution(endpoints []*v1alpha3.ServiceEntry_Endpoint) v1alpha3.ServiceEntry_Resolution {
 	if len(endpoints) == 0 {
 		return v1alpha3.ServiceEntry_DNS
