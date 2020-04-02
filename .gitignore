@@ -2,3 +2,5 @@
 vendor
 docker/istio-cloud-map-static
 .makerc
+main
+istio-cloud-map
