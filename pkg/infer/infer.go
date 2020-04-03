@@ -6,20 +6,20 @@ import (
 	"strings"
 
 	"istio.io/api/networking/v1alpha3"
-	istio_client "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	ic "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ServiceEntry infers an Istio service entry based on provided information
 // TODO: Namespaces...
-func ServiceEntry(owner v1.OwnerReference, host string, endpoints []*v1alpha3.ServiceEntry_Endpoint) *istio_client.ServiceEntry {
+func ServiceEntry(owner v1.OwnerReference, host string, endpoints []*v1alpha3.ServiceEntry_Endpoint) *ic.ServiceEntry {
 	addresses := []string{}
 	if len(endpoints) > 0 {
 		if ip := net.ParseIP(endpoints[0].Address); ip != nil {
 			addresses = []string{endpoints[0].Address}
 		}
 	}
-	return &istio_client.ServiceEntry{
+	return &ic.ServiceEntry{
 		v1.TypeMeta{},
 		v1.ObjectMeta{
 			Name:            ServiceEntryName(host),

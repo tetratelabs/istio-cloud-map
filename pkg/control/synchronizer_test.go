@@ -7,8 +7,8 @@ import (
 
 	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
 	"istio.io/api/networking/v1alpha3"
-	ic "istio.io/client-go/pkg/apis/networking/v1alpha3"
-	icrd "istio.io/client-go/pkg/clientset/versioned/typed/networking/v1alpha3"
+	icapi "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	ic "istio.io/client-go/pkg/clientset/versioned/typed/networking/v1alpha3"
 
 	"github.com/tetratelabs/istio-cloud-map/pkg/control/mock"
 )
@@ -26,7 +26,7 @@ var defaultHosts = map[string][]*v1alpha3.ServiceEntry_Endpoint{
 	defaultHost: defaultEndpoints,
 }
 
-var defaultServiceEntries = map[string]*ic.ServiceEntry{
+var defaultServiceEntries = map[string]*icapi.ServiceEntry{
 	defaultHost: {
 		v1.TypeMeta{},
 		v1.ObjectMeta{
@@ -50,7 +50,7 @@ func TestSynchronizer_garbageCollect(t *testing.T) {
 		wantHost       string
 		wantNamespace  string
 		cloudMapHosts  map[string][]*v1alpha3.ServiceEntry_Endpoint
-		serviceEntries map[string]*ic.ServiceEntry
+		serviceEntries map[string]*icapi.ServiceEntry
 	}{
 		{
 			name:           "Deletes Service Entry if host is no longer in Cloud Map",
@@ -72,7 +72,7 @@ func TestSynchronizer_garbageCollect(t *testing.T) {
 			s := &synchronizer{
 				cloudMap:     &mock.CMStore{Result: tt.cloudMapHosts},
 				serviceEntry: &mock.SEStore{Result: tt.serviceEntries},
-				client:       &mockIstio{store: make(map[string]*ic.ServiceEntry)},
+				client:       &mockIstio{store: make(map[string]*icapi.ServiceEntry)},
 			}
 			s.garbageCollect()
 			if s.client.(*mockIstio).DeleteCall != tt.deleteCall {
@@ -88,7 +88,7 @@ func TestSynchronizer_createOrUpdate(t *testing.T) {
 		host                            string
 		createCall, updateCall, getCall bool
 		cloudMapHosts                   map[string][]*v1alpha3.ServiceEntry_Endpoint
-		serviceEntries                  map[string]*ic.ServiceEntry
+		serviceEntries                  map[string]*icapi.ServiceEntry
 		endpoints                       []*v1alpha3.ServiceEntry_Endpoint
 	}{
 		{
@@ -139,7 +139,7 @@ func TestSynchronizer_createOrUpdate(t *testing.T) {
 			s := &synchronizer{
 				cloudMap:     &mock.CMStore{Result: tt.cloudMapHosts},
 				serviceEntry: &mock.SEStore{Result: tt.serviceEntries},
-				client:       &mockIstio{store: make(map[string]*ic.ServiceEntry)},
+				client:       &mockIstio{store: make(map[string]*icapi.ServiceEntry)},
 			}
 			s.createOrUpdate(tt.host, tt.endpoints)
 			if s.client.(*mockIstio).UpdateCall != tt.updateCall {
@@ -156,9 +156,9 @@ func TestSynchronizer_createOrUpdate(t *testing.T) {
 }
 
 type mockIstio struct {
-	icrd.ServiceEntryInterface
+	ic.ServiceEntryInterface
 
-	store map[string]*ic.ServiceEntry
+	store map[string]*icapi.ServiceEntry
 
 	DeleteCall bool
 	CreateCall bool
@@ -170,21 +170,21 @@ func (mi *mockIstio) Delete(_ string, _ *v1.DeleteOptions) error {
 	mi.DeleteCall = true
 	return nil
 }
-func (mi *mockIstio) Create(se *ic.ServiceEntry) (*ic.ServiceEntry, error) {
+func (mi *mockIstio) Create(se *icapi.ServiceEntry) (*icapi.ServiceEntry, error) {
 	mi.CreateCall = true
 	mi.store[se.Name] = se
 	return se, nil
 }
-func (mi *mockIstio) Update(se *ic.ServiceEntry) (*ic.ServiceEntry, error) {
+func (mi *mockIstio) Update(se *icapi.ServiceEntry) (*icapi.ServiceEntry, error) {
 	mi.UpdateCall = true
 	mi.store[se.Name] = se
 	return se, nil
 }
-func (mi *mockIstio) Get(name string, _ v1.GetOptions) (*ic.ServiceEntry, error) {
+func (mi *mockIstio) Get(name string, _ v1.GetOptions) (*icapi.ServiceEntry, error) {
 	mi.GetCall = true
 	out, found := mi.store[name]
 	if !found {
-		out = &ic.ServiceEntry{}
+		out = &icapi.ServiceEntry{}
 	}
 	return out, nil
 }

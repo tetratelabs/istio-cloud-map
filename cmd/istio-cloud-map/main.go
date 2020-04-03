@@ -22,8 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
-	istio_client "istio.io/client-go/pkg/clientset/versioned"
-	istio_informer "istio.io/client-go/pkg/informers/externalversions/networking/v1alpha3"
+	ic "istio.io/client-go/pkg/clientset/versioned"
+	icinformer "istio.io/client-go/pkg/informers/externalversions/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -60,7 +60,7 @@ func serve() (serve *cobra.Command) {
 			if err != nil {
 				return errors.Wrapf(err, "failed to create a kube client from the config %q", kubeConfig)
 			}
-			ic, err := istio_client.NewForConfig(cfg)
+			ic, err := ic.NewForConfig(cfg)
 			if err != nil {
 				return errors.Wrap(err, "failed to create an istio client from the k8s rest config")
 			}
@@ -92,7 +92,7 @@ func serve() (serve *cobra.Command) {
 			sync := control.NewSynchronizer(owner, istio, cloudMap, ic.NetworkingV1alpha3().ServiceEntries(allNamespaces))
 			go sync.Run(ctx)
 
-			informer := istio_informer.NewServiceEntryInformer(ic, allNamespaces, 5*time.Second,
+			informer := icinformer.NewServiceEntryInformer(ic, allNamespaces, 5*time.Second,
 				// taken from https://github.com/istio/istio/blob/release-1.5/pilot/pkg/bootstrap/namespacecontroller.go
 				cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 			serviceentry.AttachHandler(istio, informer)
