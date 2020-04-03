@@ -78,7 +78,7 @@ func (s *synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.Service
 			log.Printf("error updating Service Entry %q: %v", infer.ServiceEntryName(host), err)
 			return
 		}
-		log.Printf("updated Service Entry %q, ResourceVersion is now %q", infer.ServiceEntryName(host), rv)
+		log.Printf("updated Service Entry %q, ResourceVersion is now %q", infer.ServiceEntryName(host), rv.ResourceVersion)
 		return
 	}
 	// Otherwise, create a new Service Entry
@@ -86,7 +86,7 @@ func (s *synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.Service
 	if err != nil {
 		log.Printf("error creating Service Entry %q: %v", infer.ServiceEntryName(host), err)
 	}
-	log.Printf("created Service Entry %q, ResourceVersion is %q", infer.ServiceEntryName(host), rv)
+	log.Printf("created Service Entry %q, ResourceVersion is %q", infer.ServiceEntryName(host), rv.ResourceVersion)
 }
 
 func (s *synchronizer) garbageCollect() {
