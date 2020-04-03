@@ -3,8 +3,8 @@ package control
 import (
 	"testing"
 
+	cmMock "github.com/tetratelabs/istio-cloud-map/pkg/cloudmap/mock"
 	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
-	cmMock "github.com/tetratelabs/istio-cloud-map/pkg/cloud-map/mock"
 	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
 	seMock "github.com/tetratelabs/istio-cloud-map/pkg/serviceentry/mock"
 
@@ -91,7 +91,7 @@ func TestSynchronizer_garbageCollect(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Synchronizer{
+			s := &synchronizer{
 				cloudMap:     &cmMock.Store{Result: tt.cloudMapHosts},
 				serviceEntry: &seMock.Store{Result: tt.serviceEntries},
 				istio:        &mockIstio{},

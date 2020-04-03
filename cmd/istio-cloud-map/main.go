@@ -17,21 +17,19 @@ package main
 import (
 	"context"
 	"log"
+	"time"
+
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
+	istio_client "istio.io/client-go/pkg/clientset/versioned"
+	istio_informer "istio.io/client-go/pkg/informers/externalversions/networking/v1alpha3"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/tetratelabs/istio-cloud-map/pkg/cloudmap"
 	"github.com/tetratelabs/istio-cloud-map/pkg/control"
-
-	"github.com/operator-framework/operator-sdk/pkg/sdk"
-	"github.com/spf13/cobra"
-
-	"os"
-
-	"github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
-	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
-	"istio.io/istio/pilot/pkg/config/kube/crd"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 const (
@@ -49,6 +47,7 @@ func serve() (serve *cobra.Command) {
 		debug      bool
 		kubeConfig string
 		namespace  string
+		awsRegion  string
 	)
 
 	serve = &cobra.Command{
@@ -57,34 +56,14 @@ func serve() (serve *cobra.Command) {
 		Short:   "Starts the Istio Cloud Map Operator server",
 		Example: "istio-cloud-map serve --id 123",
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			// the operator-sdk code will panic if we don't set these:
-			os.Setenv(k8sutil.OperatorNameEnvVar, id)
-			os.Setenv(k8sutil.KubeConfigEnvVar, kubeConfig)
-			// we actually configure it to watch all namespaces below by using the empty string, but they have
-			// validation that panics if we set this var to the empty string
-			if namespace != "" {
-				os.Setenv(k8sutil.WatchNamespaceEnvVar, namespace)
+			cfg, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
+			if err != nil {
+				return errors.Wrapf(err, "failed to create a kube client from the config %q", kubeConfig)
 			}
-
-			sdk.ExposeMetricsPort()
-
-			k8sutil.AddToSDKScheme(func(scheme *runtime.Scheme) error {
-				scheme.AddKnownTypes(
-					schema.GroupVersion{
-						Group:   apiGroup,
-						Version: apiVersion,
-					},
-					&crd.ServiceEntry{
-						TypeMeta: v1.TypeMeta{
-							Kind:       "ServiceEntry",
-							APIVersion: apiType,
-						},
-					},
-					&crd.ServiceEntryList{},
-				)
-				return nil
-			})
+			ic, err := istio_client.NewForConfig(cfg)
+			if err != nil {
+				return errors.Wrap(err, "failed to create an istio client from the k8s rest config")
+			}
 
 			t := true
 			owner := v1.OwnerReference{
@@ -94,17 +73,10 @@ func serve() (serve *cobra.Command) {
 				Controller: &t,
 			}
 
-			istio := serviceentry.New(owner)
-			if debug {
-				istio = serviceentry.NewLoggingStore(istio, log.Printf)
-			}
-			cloudMap := cloudmap.NewStore()
-
+			// TODO: move over to run groups, get a context there to use to handle shutdown gracefully.
 			ctx := context.Background() // common context for cancellation across all loops/routines
-			awsRegion := os.Getenv("AWS_REGION")
-			if awsRegion == "" {
-				log.Fatal("AWS_REGION env var not set, unable to continue")
-			}
+
+			cloudMap := cloudmap.NewStore()
 			log.Printf("Starting Cloud Map watcher in %q", awsRegion)
 			cmWatcher, err := cloudmap.NewWatcher(cloudMap, awsRegion)
 			if err != nil {
@@ -112,17 +84,20 @@ func serve() (serve *cobra.Command) {
 			}
 			go cmWatcher.Run(ctx)
 
-			log.Print("Starting Synchronizer control loop")
-			sync, err := control.NewSynchronizer(owner, istio, cloudMap, kubeConfig)
-			if err != nil {
-				return err
+			istio := serviceentry.New(owner)
+			if debug {
+				istio = serviceentry.NewLoggingStore(istio, log.Printf)
 			}
+			log.Print("Starting Synchronizer control loop")
+			sync := control.NewSynchronizer(owner, istio, cloudMap, ic.NetworkingV1alpha3().ServiceEntries(allNamespaces))
 			go sync.Run(ctx)
 
+			informer := istio_informer.NewServiceEntryInformer(ic, allNamespaces, 5*time.Second,
+				// taken from https://github.com/istio/istio/blob/release-1.5/pilot/pkg/bootstrap/namespacecontroller.go
+				cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+			serviceentry.AttachHandler(istio, informer)
 			log.Printf("Watching %s.%s across all namespaces with resync period %d and id %q", apiType, kind, resyncPeriod, id)
-			sdk.Watch(apiType, kind, allNamespaces, resyncPeriod)
-			sdk.Handle(serviceentry.NewHandler(istio))
-			sdk.Run(ctx)
+			informer.Run(ctx.Done())
 			return nil
 		},
 	}
@@ -134,6 +109,10 @@ func serve() (serve *cobra.Command) {
 		"kube-config", "", "kubeconfig location; if empty the server will assume it's in a cluster; for local testing use ~/.kube/config")
 	serve.PersistentFlags().StringVar(&namespace, "namespace", "",
 		"If provided, the namespace this operator publishes CRDs to. If no value is provided it will be populated from the WATCH_NAMESPACE environment variable.")
+
+	// TODO: see if we can derive automatically when we're deployed in AWS
+	serve.PersistentFlags().StringVar(&awsRegion, "aws-region", "", "AWS Region to connect to Cloud Map in")
+
 	return serve
 }
 

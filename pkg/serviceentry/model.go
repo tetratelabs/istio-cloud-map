@@ -15,13 +15,10 @@
 package serviceentry
 
 import (
-	"fmt"
 	"reflect"
 	"sync"
 
-	"istio.io/api/networking/v1alpha3"
-	"istio.io/istio/pilot/pkg/config/kube/crd"
-	"istio.io/istio/pilot/pkg/model"
+	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -35,16 +32,16 @@ type (
 		Classify(host string) Owner
 
 		// Ours are ServiceEntries managed by us
-		Ours() map[string]*Entry
+		Ours() map[string]*v1alpha3.ServiceEntry
 
 		// Theirs are ServiceEntries managed by any other system
-		Theirs() map[string]*Entry
+		Theirs() map[string]*v1alpha3.ServiceEntry
 
 		// Insert adds a ServiceEntry to the store (detecting who it belongs to)
-		Insert(cr crd.IstioObject) error
+		Insert(se *v1alpha3.ServiceEntry) error
 
 		// Delete removes a ServiceEntry from the store
-		Delete(cr crd.IstioObject) error
+		Delete(se *v1alpha3.ServiceEntry) error
 
 		// OwnerReference is used to label new entries as owned by this store
 		OwnerReference() v1.OwnerReference
@@ -52,8 +49,8 @@ type (
 
 	store struct {
 		ref          v1.OwnerReference
-		m            sync.RWMutex      // guards both maps
-		ours, theirs map[string]*Entry // maps host->Entry; a single Entry can be referenced by many hosts
+		m            sync.RWMutex                      // guards both maps
+		ours, theirs map[string]*v1alpha3.ServiceEntry // maps host->Entry; a single Entry can be referenced by many hosts
 	}
 )
 
@@ -70,8 +67,8 @@ const (
 func New(ownerRef v1.OwnerReference) Store {
 	return &store{
 		ref:    ownerRef,
-		ours:   make(map[string]*Entry),
-		theirs: make(map[string]*Entry),
+		ours:   make(map[string]*v1alpha3.ServiceEntry),
+		theirs: make(map[string]*v1alpha3.ServiceEntry),
 	}
 }
 
@@ -89,7 +86,7 @@ func (s *store) Classify(host string) Owner {
 	return None
 }
 
-func (s *store) Ours() map[string]*Entry {
+func (s *store) Ours() map[string]*v1alpha3.ServiceEntry {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	return copyMap(s.ours)
@@ -99,62 +96,49 @@ func (s *store) OwnerReference() v1.OwnerReference {
 	return s.ref
 }
 
-func (s *store) Theirs() map[string]*Entry {
+func (s *store) Theirs() map[string]*v1alpha3.ServiceEntry {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	return copyMap(s.theirs)
 }
 
-func (s *store) Insert(cr crd.IstioObject) error {
-	cfg, err := crd.ConvertObject(model.ServiceEntry, cr, "")
-	if err != nil {
-		return fmt.Errorf("failed to convert IstioObject to ServiceEntry")
-	}
-
-	owner := owner(s.ref, cr.GetObjectMeta().OwnerReferences)
-	entry := &Entry{
-		Meta: cr.GetObjectMeta(),
-		Spec: cfg.Spec.(*v1alpha3.ServiceEntry),
-	}
+func (s *store) Insert(se *v1alpha3.ServiceEntry) error {
+	owner := owner(s.ref, se.GetObjectMeta().GetOwnerReferences())
 	// as a single update, we insert all hosts owned by the ServiceEntry
 	s.m.Lock()
 	switch owner {
 	case None, Us:
-		for _, host := range entry.Spec.Hosts {
-			s.ours[host] = entry
+		for _, host := range se.Spec.Hosts {
+			s.ours[host] = se
 		}
 	case Them:
-		for _, host := range entry.Spec.Hosts {
-			s.theirs[host] = entry
+		for _, host := range se.Spec.Hosts {
+			s.theirs[host] = se
 		}
 	}
 	s.m.Unlock()
 	return nil
 }
 
-func (s *store) Delete(cr crd.IstioObject) error {
-	cfg, err := crd.ConvertObject(model.ServiceEntry, cr, "")
-	if err != nil {
-		return fmt.Errorf("failed to convert IstioObject to ServiceEntry")
-	}
-	owner := owner(s.ref, cr.GetObjectMeta().OwnerReferences)
+func (s *store) Delete(se *v1alpha3.ServiceEntry) error {
+	owner := owner(s.ref, se.GetObjectMeta().GetOwnerReferences())
 	// as a single update, we delete all hosts owned by the ServiceEntry
 	s.m.Lock()
 	switch owner {
 	case Us:
-		for _, host := range cfg.Spec.(*v1alpha3.ServiceEntry).Hosts {
+		for _, host := range se.Spec.Hosts {
 			delete(s.ours, host)
 		}
 	case Them:
-		for _, host := range cfg.Spec.(*v1alpha3.ServiceEntry).Hosts {
+		for _, host := range se.Spec.Hosts {
 			delete(s.theirs, host)
 		}
 	case None:
 		// for those with no owner, make sure we remove from both maps
-		for _, host := range cfg.Spec.(*v1alpha3.ServiceEntry).Hosts {
+		for _, host := range se.Spec.Hosts {
 			delete(s.ours, host)
 		}
-		for _, host := range cfg.Spec.(*v1alpha3.ServiceEntry).Hosts {
+		for _, host := range se.Spec.Hosts {
 			delete(s.theirs, host)
 		}
 	}
@@ -175,8 +159,8 @@ func owner(self v1.OwnerReference, refs []v1.OwnerReference) Owner {
 	return Them
 }
 
-func copyMap(m map[string]*Entry) map[string]*Entry {
-	out := make(map[string]*Entry, len(m))
+func copyMap(m map[string]*v1alpha3.ServiceEntry) map[string]*v1alpha3.ServiceEntry {
+	out := make(map[string]*v1alpha3.ServiceEntry, len(m))
 	for k, v := range m {
 		out[k] = v
 	}
@@ -207,29 +191,29 @@ func (l LoggingStore) Classify(host string) Owner {
 }
 
 // Ours are ServiceEntries managed by us
-func (l LoggingStore) Ours() map[string]*Entry {
+func (l LoggingStore) Ours() map[string]*v1alpha3.ServiceEntry {
 	ours := l.s.Ours()
 	l.log("returned ours map: %v", ours)
 	return ours
 }
 
 // Theirs are ServiceEntries managed by any other system
-func (l LoggingStore) Theirs() map[string]*Entry {
+func (l LoggingStore) Theirs() map[string]*v1alpha3.ServiceEntry {
 	theirs := l.s.Theirs()
 	l.log("returned ours map: %v", theirs)
 	return theirs
 }
 
 // Insert adds a ServiceEntry to the store (detecting who it belongs to)
-func (l LoggingStore) Insert(cr crd.IstioObject) error {
-	err := l.s.Insert(cr)
-	l.log("inserted %v with result %v", cr, err)
+func (l LoggingStore) Insert(se *v1alpha3.ServiceEntry) error {
+	err := l.s.Insert(se)
+	l.log("inserted %v with result %v", se, err)
 	return err
 }
 
 // Delete removes a ServiceEntry from the store
-func (l LoggingStore) Delete(cr crd.IstioObject) error {
-	err := l.s.Delete(cr)
-	l.log("deleted %v with result %v", cr, err)
+func (l LoggingStore) Delete(se *v1alpha3.ServiceEntry) error {
+	err := l.s.Delete(se)
+	l.log("deleted %v with result %v", se, err)
 	return err
 }
