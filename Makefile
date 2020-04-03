@@ -5,15 +5,6 @@ CONTAINER_TAG ?= v0.1
 # Make sure we pick up any local overrides.
 -include .makerc
 
-deps: $(DEP)
-	@echo "Fetching dependencies..."
-	dep ensure -v
-
-$(DEP):
-	@echo "dep not found, installing..."
-	@go get github.com/golang/dep/cmd/dep
-
-
 build: istio-cloud-map
 istio-cloud-map:
 	go build -o istio-cloud-map github.com/tetratelabs/istio-cloud-map/cmd/istio-cloud-map
@@ -43,3 +34,6 @@ docker-run: docker-build
 		-v ~/.kube/config:/etc/istio-cloud-map/kube-config \
 		--network host \
 		$(REGISTRY)/istio-cloud-map:$(TAG) serve --kube-config /etc/istio-cloud-map/kube-config
+
+clean:
+	rm -f istio-cloud-map

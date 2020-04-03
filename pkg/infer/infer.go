@@ -6,30 +6,26 @@ import (
 	"strings"
 
 	"istio.io/api/networking/v1alpha3"
-	"istio.io/istio/pilot/pkg/model"
+	ic "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ServiceEntry infers an Istio service entry based on provided information
-// TODO: Owners, needs Istio upstreaming!
 // TODO: Namespaces...
-func ServiceEntry(owner v1.OwnerReference, host string, endpoints []*v1alpha3.ServiceEntry_Endpoint) model.Config {
+func ServiceEntry(owner v1.OwnerReference, host string, endpoints []*v1alpha3.ServiceEntry_Endpoint) *ic.ServiceEntry {
 	addresses := []string{}
 	if len(endpoints) > 0 {
 		if ip := net.ParseIP(endpoints[0].Address); ip != nil {
 			addresses = []string{endpoints[0].Address}
 		}
 	}
-	return model.Config{
-		ConfigMeta: model.ConfigMeta{
-			Name: ServiceEntryName(host),
-			Type: model.ServiceEntry.Type,
-			// This concatenation is to placate weird Istio behaviour; not sure if bug with Istio code?
-			Group:   model.ServiceEntry.Group + model.IstioAPIGroupDomain,
-			Version: model.ServiceEntry.Version,
-			Domain:  model.IstioAPIGroupDomain,
+	return &ic.ServiceEntry{
+		v1.TypeMeta{},
+		v1.ObjectMeta{
+			Name:            ServiceEntryName(host),
+			OwnerReferences: []v1.OwnerReference{owner},
 		},
-		Spec: &v1alpha3.ServiceEntry{
+		v1alpha3.ServiceEntry{
 			Hosts:     []string{host},
 			Addresses: addresses,
 			// assume external for now

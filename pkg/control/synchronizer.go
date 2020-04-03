@@ -6,13 +6,11 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/tetratelabs/istio-cloud-map/pkg/cloudmap"
 	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
 	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
 	"istio.io/api/networking/v1alpha3"
-	"istio.io/istio/pilot/pkg/config/kube/crd"
-	"istio.io/istio/pilot/pkg/model"
+	icapi "istio.io/client-go/pkg/clientset/versioned/typed/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -20,19 +18,18 @@ type synchronizer struct {
 	owner        v1.OwnerReference
 	serviceEntry serviceentry.Store
 	cloudMap     cloudmap.Store
-	istio        model.ConfigStore
+	client       icapi.ServiceEntryInterface
 	interval     time.Duration
 }
 
-func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, cloudMap cloudmap.Store, kubeConfig string) (*synchronizer, error) {
-	istio, err := crd.NewClient(kubeConfig, "", model.IstioConfigTypes, "")
+func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, cloudMap cloudmap.Store, client icapi.ServiceEntryInterface) *synchronizer {
 	return &synchronizer{
 		owner:        owner,
 		serviceEntry: serviceEntry,
 		cloudMap:     cloudMap,
-		istio:        istio,
+		client:       client,
 		interval:     time.Second * 5,
-	}, errors.Wrap(err, "unable to create synchronizer")
+	}
 }
 
 // Run the synchronizer until the context is cancelled
@@ -65,29 +62,31 @@ func (s *synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.Service
 	newServiceEntry := infer.ServiceEntry(s.owner, host, endpoints)
 	if _, ok := s.serviceEntry.Ours()[host]; ok {
 		// If we have already created an identical service entry, return.
-		if reflect.DeepEqual(s.serviceEntry.Ours()[host].Endpoints(), endpoints) {
+		if reflect.DeepEqual(s.serviceEntry.Ours()[host].Spec.Endpoints, endpoints) {
 			return
 		}
 		// Otherwise, endpoints have changed so update existing Service Entry
-		oldServiceEntry, found := s.istio.Get(model.ServiceEntry.Type, infer.ServiceEntryName(host), "istio-system")
-		if !found {
+		n := infer.ServiceEntryName(host)
+		oldServiceEntry, err := s.client.Get(n, v1.GetOptions{})
+		if err != nil {
+			log.Printf("failed to get existing service entry %q for host %q", n, host)
 			return
 		}
 		newServiceEntry.ResourceVersion = oldServiceEntry.ResourceVersion
-		rv, err := s.istio.Update(newServiceEntry)
+		rv, err := s.client.Update(newServiceEntry)
 		if err != nil {
 			log.Printf("error updating Service Entry %q: %v", infer.ServiceEntryName(host), err)
 			return
 		}
-		log.Printf("updated Service Entry %q, ResourceVersion is now %q", infer.ServiceEntryName(host), rv)
+		log.Printf("updated Service Entry %q, ResourceVersion is now %q", infer.ServiceEntryName(host), rv.ResourceVersion)
 		return
 	}
 	// Otherwise, create a new Service Entry
-	rv, err := s.istio.Create(newServiceEntry)
+	rv, err := s.client.Create(newServiceEntry)
 	if err != nil {
 		log.Printf("error creating Service Entry %q: %v", infer.ServiceEntryName(host), err)
 	}
-	log.Printf("created Service Entry %q, ResourceVersion is %q", infer.ServiceEntryName(host), rv)
+	log.Printf("created Service Entry %q, ResourceVersion is %q", infer.ServiceEntryName(host), rv.ResourceVersion)
 }
 
 func (s *synchronizer) garbageCollect() {
@@ -96,7 +95,7 @@ func (s *synchronizer) garbageCollect() {
 		if _, ok := s.cloudMap.Hosts()[host]; !ok {
 			// TODO: namespaces!
 			// TODO: Don't attempt to delete no owners
-			if err := s.istio.Delete(model.ServiceEntry.Type, infer.ServiceEntryName(host), "istio-system"); err != nil {
+			if err := s.client.Delete(infer.ServiceEntryName(host), &v1.DeleteOptions{}); err != nil {
 				log.Printf("error deleting Service Entry %q: %v", infer.ServiceEntryName(host), err)
 			}
 			log.Printf("successfully deleted Service Entry %q", infer.ServiceEntryName(host))

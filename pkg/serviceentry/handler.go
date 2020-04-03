@@ -15,24 +15,13 @@
 package serviceentry
 
 import (
-	"context"
-	"reflect"
-
-	"github.com/operator-framework/operator-sdk/pkg/sdk"
-	"istio.io/istio/pilot/pkg/config/kube/crd"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"istio.io/client-go/pkg/apis/networking/v1alpha3"
+	"k8s.io/client-go/tools/cache"
 )
 
-// GroupVersionKind declares the CRD version to be used
-var GroupVersionKind = schema.GroupVersionKind{
-	Group:   "networking.istio.io",
-	Version: "v1alpha3",
-	Kind:    "ServiceEntry",
-}
-
 // NewHandler returns an operator-sdk Handler which updates the store based on Kubernetes events
-func NewHandler(store Store) sdk.Handler {
-	return handler{store}
+func AttachHandler(store Store, informer cache.SharedIndexInformer) {
+	informer.AddEventHandler(handler{store})
 }
 
 // Implements operator-sdk.Handler; we use it to update our representation of service entries.
@@ -40,16 +29,22 @@ type handler struct {
 	Store
 }
 
-func (h handler) Handle(ctx context.Context, event sdk.Event) error {
-	switch cr := event.Object.(type) {
-	case crd.IstioObject:
-		if !reflect.DeepEqual(cr.GetObjectKind().GroupVersionKind(), GroupVersionKind) {
-			return nil
-		}
-		if event.Deleted {
-			return h.Delete(cr)
-		}
-		return h.Insert(cr)
-	}
-	return nil
+func (c handler) OnAdd(obj interface{}) {
+	// TODO: handle the case this isn't wrong and log, bail out w/o calling insert
+	se := obj.(*v1alpha3.ServiceEntry)
+	c.Insert(se)
+}
+
+func (c handler) OnUpdate(oldObj, newObj interface{}) {
+	old := oldObj.(*v1alpha3.ServiceEntry)
+	se := newObj.(*v1alpha3.ServiceEntry)
+
+	// order matters here, since it's likely these work on the same set of hosts: delete the old first, then add the new
+	c.Delete(old)
+	c.Insert(se)
+}
+
+func (c handler) OnDelete(obj interface{}) {
+	se := obj.(*v1alpha3.ServiceEntry)
+	c.Delete(se)
 }

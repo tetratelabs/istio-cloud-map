@@ -62,8 +62,7 @@ spec:
 
 Build with the makefile by:
 ```bash
-make deps # only needs to be done once
-make      # or `make build`
+make   # or `make build`
 ```
 
 Run with
@@ -87,7 +86,6 @@ env CONTAINER_REGISTRY=gcr.io/tetratelabs CONTAINER_TAG=v0.1 \
 
 Alternatively, just use `go`:
 ```bash
-dep ensure
 go build -o istio-cloud-map github.com/tetratelabs/istio-cloud-map/cmd/istio-cloud-map
 ``` 
 

@@ -15,12 +15,10 @@
 package serviceentry
 
 import (
-	"fmt"
 	"testing"
 
 	"istio.io/api/networking/v1alpha3"
-	"istio.io/istio/pilot/pkg/config/kube/crd"
-	"istio.io/istio/pilot/pkg/model"
+	ic "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -35,71 +33,79 @@ var (
 		Controller: &t,
 	}
 
-	noOwners = createIstioObject(
-		&v1alpha3.ServiceEntry{
+	noOwners = &ic.ServiceEntry{
+		Spec: v1alpha3.ServiceEntry{
 			Hosts: []string{"no.owners"},
 		},
-	)
+	}
 
-	us = createIstioObject(
-		&v1alpha3.ServiceEntry{
+	us = &ic.ServiceEntry{
+		v1.TypeMeta{},
+		v1.ObjectMeta{
+			OwnerReferences: []v1.OwnerReference{baseOwner},
+		},
+		v1alpha3.ServiceEntry{
 			Hosts: []string{"1.us", "2.us"},
 		},
-		baseOwner,
-	)
+	}
 
-	them = createIstioObject(
-		&v1alpha3.ServiceEntry{
+	them = &ic.ServiceEntry{
+		v1.TypeMeta{},
+		v1.ObjectMeta{
+			OwnerReferences: []v1.OwnerReference{
+				{
+					APIVersion: "cloud-map.istio.io",
+					Kind:       "ServiceController",
+					Name:       "789",
+					Controller: &t,
+				},
+			},
+		},
+		v1alpha3.ServiceEntry{
 			Hosts: []string{"1.them", "2.them", "3.them"},
 		},
-		v1.OwnerReference{
-			APIVersion: "cloud-map.istio.io",
-			Kind:       "ServiceController",
-			Name:       "789",
-			Controller: &t,
-		},
-	)
+	}
 )
 
 func TestInsert(t *testing.T) {
 	tests := []struct {
 		name         string
-		crs          []crd.IstioObject
+		crs          []*ic.ServiceEntry
 		ours, theirs []string
 	}{
 		{
 			"empty",
-			[]crd.IstioObject{},
+			[]*ic.ServiceEntry{},
 			[]string{},
 			[]string{},
 		},
 		{
 			"no owners",
-			[]crd.IstioObject{noOwners},
+			[]*ic.ServiceEntry{noOwners},
 			[]string{"no.owners"},
 			[]string{},
 		},
 		{
 			"us",
-			[]crd.IstioObject{us},
+			[]*ic.ServiceEntry{us},
 			[]string{"1.us", "2.us"},
 			[]string{},
 		},
 		{
 			"them",
-			[]crd.IstioObject{them},
+			[]*ic.ServiceEntry{them},
 			[]string{},
 			[]string{"1.them", "2.them", "3.them"},
 		},
 		{
 			"no owners, us",
-			[]crd.IstioObject{noOwners, us},
+			[]*ic.ServiceEntry{noOwners, us},
 			[]string{"no.owners", "1.us", "2.us"},
 			[]string{},
 		},
 		{
 			"no owners, us, them",
-			[]crd.IstioObject{noOwners, us, them},
+			[]*ic.ServiceEntry{noOwners, us, them},
 			[]string{"no.owners", "1.us", "2.us"},
 			[]string{"1.them", "2.them", "3.them"},
 		},
@@ -141,42 +147,42 @@ func TestDelete(t *testing.T) {
 	// the remaining hostnames after the deletion.
 	tests := []struct {
 		name         string
-		crs          []crd.IstioObject
+		crs          []*ic.ServiceEntry
 		ours, theirs []string
 	}{
 		{
 			"empty",
-			[]crd.IstioObject{},
+			[]*ic.ServiceEntry{},
 			[]string{"no.owners", "1.us", "2.us"},
 			[]string{"1.them", "2.them", "3.them"},
 		},
 		{
 			"no owners",
-			[]crd.IstioObject{noOwners},
+			[]*ic.ServiceEntry{noOwners},
 			[]string{"1.us", "2.us"},
 			[]string{"1.them", "2.them", "3.them"},
 		},
 		{
 			"us",
-			[]crd.IstioObject{us},
+			[]*ic.ServiceEntry{us},
 			[]string{"no.owners"},
 			[]string{"1.them", "2.them", "3.them"},
 		},
 		{
 			"them",
-			[]crd.IstioObject{them},
+			[]*ic.ServiceEntry{them},
 			[]string{"no.owners", "1.us", "2.us"},
 			[]string{},
 		},
 		{
 			"no owners, us",
-			[]crd.IstioObject{noOwners, us},
+			[]*ic.ServiceEntry{noOwners, us},
 			[]string{},
 			[]string{"1.them", "2.them", "3.them"},
 		},
 		{
 			"no owners, us, them",
-			[]crd.IstioObject{noOwners, us, them},
+			[]*ic.ServiceEntry{noOwners, us, them},
 			[]string{},
 			[]string{},
 		},
@@ -184,7 +190,7 @@ func TestDelete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			underTest := NewLoggingStore(New(baseOwner), t.Logf)
-			for _, o := range []crd.IstioObject{noOwners, us, them} {
+			for _, o := range []*ic.ServiceEntry{noOwners, us, them} {
 				if err := underTest.Insert(o); err != nil {
 					t.Fatalf("New(%q).Insert(%v) = %v wanted no err", id, o, err)
 				}
@@ -221,42 +227,42 @@ func TestDelete(t *testing.T) {
 func TestClassify(t *testing.T) {
 	tests := []struct {
 		name         string
-		crs          []crd.IstioObject
+		crs          []*ic.ServiceEntry
 		ours, theirs []string
 	}{
 		{
 			"empty",
-			[]crd.IstioObject{},
+			[]*ic.ServiceEntry{},
 			[]string{},
 			[]string{},
 		},
 		{
 			"no owners",
-			[]crd.IstioObject{noOwners},
+			[]*ic.ServiceEntry{noOwners},
 			[]string{"no.owners"},
 			[]string{},
 		},
 		{
 			"us",
-			[]crd.IstioObject{us},
+			[]*ic.ServiceEntry{us},
 			[]string{"1.us", "2.us"},
 			[]string{},
 		},
 		{
 			"them",
-			[]crd.IstioObject{them},
+			[]*ic.ServiceEntry{them},
 			[]string{},
 			[]string{"1.them", "2.them", "3.them"},
 		},
 		{
 			"no owners, us",
-			[]crd.IstioObject{noOwners, us},
+			[]*ic.ServiceEntry{noOwners, us},
 			[]string{"no.owners", "1.us", "2.us"},
 			[]string{},
 		},
 		{
 			"no owners, us, them",
-			[]crd.IstioObject{noOwners, us, them},
+			[]*ic.ServiceEntry{noOwners, us, them},
 			[]string{"no.owners", "1.us", "2.us"},
 			[]string{"1.them", "2.them", "3.them"},
 		},
@@ -283,24 +289,4 @@ func TestClassify(t *testing.T) {
 			}
 		})
 	}
-}
-
-func createIstioObject(se *v1alpha3.ServiceEntry, owners ...v1.OwnerReference) crd.IstioObject {
-	o, err := crd.ConvertConfig(model.ServiceEntry, model.Config{
-		ConfigMeta: model.ConfigMeta{
-			Type:      model.ServiceEntry.Type,
-			Group:     model.ServiceEntry.Group,
-			Version:   model.ServiceEntry.Version,
-			Name:      "bobby",
-			Namespace: "default",
-		},
-		Spec: se,
-	})
-	if err != nil {
-		panic(fmt.Errorf("crd.ConvertConfig failed with %v", err))
-	}
-	m := o.GetObjectMeta()
-	m.OwnerReferences = owners
-	o.SetObjectMeta(m)
-	return o
 }
