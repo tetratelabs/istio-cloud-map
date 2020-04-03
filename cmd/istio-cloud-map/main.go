@@ -130,7 +130,8 @@ func serve() (serve *cobra.Command) {
 	serve.PersistentFlags().StringVar(&namespace, "namespace", "",
 		"If provided, the namespace this operator publishes CRDs to. If no value is provided it will be populated from the WATCH_NAMESPACE environment variable.")
 
-	serve.PersistentFlags().StringVar(&awsRegion, "aws-region", "", "AWS Region to connect to Cloud Map in")
+	serve.PersistentFlags().StringVar(&awsRegion, "aws-region", "",
+		"AWS Region to connect to Cloud Map. Use this OR the environment variable AWS_REGION.")
 	serve.PersistentFlags().StringVar(&awsID, "aws-access-key-id", "",
 		"AWS Key ID to use to connect to Cloud Map. Use flags for both this and aws-secret OR use "+
 			"the environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Flags and env vars cannot be mixed.")
