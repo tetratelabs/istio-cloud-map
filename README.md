@@ -18,7 +18,7 @@ This repo contains an operator for syncing Cloud Map data into Istio by pushing 
       secret-access-key: <base64-encoded-IAM-secret-access-key>
     ```
 3. Edit the aws-config config map in `kubernetes/deployment.yaml` to choose the AWS Cloud Map region to sync with.
-    ```bash
+    ```yaml
     apiVersion: v1
     kind: ConfigMap
     metadata:
@@ -71,14 +71,14 @@ This repo contains an operator for syncing Cloud Map data into Istio by pushing 
 `istio-cloud-map serve` flags:
 | Flag | Type | Description |
 |------|------|-------------|
-| `--aws-access-key-id` | string | AWS Key ID to use to connect to Cloud Map. Use flags for both this and aws-secret OR use the environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Flags and env vars cannot be mixed |
-| `--aws-region` | string | AWS Region to connect to Cloud Map. Use this OR the environment variable AWS_REGION |
-| `--aws-secret-access-key` | string | AWS Key ID to use to connect to Cloud Map. Use flags for both this and aws-secret OR use the environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Flags and env vars cannot be mixed |
+| `--aws-access-key-id` | string | AWS Access Key ID to use to connect to Cloud Map. Use flags for both this and `--aws-secret-access-key` OR use the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Flags and env vars cannot be mixed |
+| `--aws-region` | string | AWS Region to connect to Cloud Map. Use this OR the environment variable `AWS_REGION` |
+| `--aws-secret-access-key` | string |  AWS Secret Access Key to use to connect to Cloud Map. Use flags for both this and `--aws-access-key-id` OR use the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Flags and env vars cannot be mixed |
 | `--debug` | boolean | if true, enables more logging (default true) |
 | `-h`, `--help` | none | help for serve |
 | `--id` | string | ID of this instance; instances will only ServiceEntries marked with their own ID. (default "istio-cloud-map-operator") |
 | `--kube-config` | string | kubeconfig location; if empty the server will assume it's in a cluster; for local testing use ~/.kube/config |
-| `--namespace` | string | If provided, the namespace this operator publishes CRDs to. If no value is provided it will be populated from the WATCH_NAMESPACE environment variable. |
+| `--namespace` | string | If provided, the namespace this operator publishes CRDs to. If no value is provided it will be populated from the `WATCH_NAMESPACE` environment variable |
 
 ## Building
 
@@ -97,11 +97,10 @@ And produce docker containers via:
 make docker-build
 make docker-push
 ```
-You can override the hub and tag using the `CONTAINER_REGISTRY` and `CONTAINER_TAG` environment variables:
-
+You can override the hub and tag using the `REGISTRY` and `TAG` environment variables:
 
 ```bash
-env CONTAINER_REGISTRY=gcr.io/tetratelabs CONTAINER_TAG=v0.1 \
+env REGISTRY=gcr.io/tetratelabs TAG=v0.1 \
     make docker-push
 ```
 

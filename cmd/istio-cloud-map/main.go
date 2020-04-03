@@ -133,10 +133,10 @@ func serve() (serve *cobra.Command) {
 	serve.PersistentFlags().StringVar(&awsRegion, "aws-region", "",
 		"AWS Region to connect to Cloud Map. Use this OR the environment variable AWS_REGION.")
 	serve.PersistentFlags().StringVar(&awsID, "aws-access-key-id", "",
-		"AWS Key ID to use to connect to Cloud Map. Use flags for both this and aws-secret OR use "+
+		"AWS Access Key ID to use to connect to Cloud Map. Use flags for both this and --aws-secret-access-key OR use "+
 			"the environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Flags and env vars cannot be mixed.")
 	serve.PersistentFlags().StringVar(&awsSecret, "aws-secret-access-key", "",
-		"AWS Key ID to use to connect to Cloud Map. Use flags for both this and aws-secret OR use "+
+		"AWS Secret Access Key to use to connect to Cloud Map. Use flags for both this and --aws-access-key-id OR use "+
 			"the environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Flags and env vars cannot be mixed.")
 	return serve
 }
