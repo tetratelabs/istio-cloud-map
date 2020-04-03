@@ -84,7 +84,7 @@ func (s *synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.Service
 	// Otherwise, create a new Service Entry
 	rv, err := s.client.Create(newServiceEntry)
 	if err != nil {
-		log.Printf("error creating Service Entry %q: %v", infer.ServiceEntryName(host), err)
+		log.Printf("error creating Service Entry %q: %v\n%v", infer.ServiceEntryName(host), err, newServiceEntry)
 	}
 	log.Printf("created Service Entry %q, ResourceVersion is %q", infer.ServiceEntryName(host), rv.ResourceVersion)
 }
