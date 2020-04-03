@@ -10,7 +10,7 @@ import (
 	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
 	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
 	"istio.io/api/networking/v1alpha3"
-	ic "istio.io/client-go/pkg/clientset/versioned/typed/networking/v1alpha3"
+	icapi "istio.io/client-go/pkg/clientset/versioned/typed/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -18,11 +18,11 @@ type synchronizer struct {
 	owner        v1.OwnerReference
 	serviceEntry serviceentry.Store
 	cloudMap     cloudmap.Store
-	client       ic.ServiceEntryInterface
+	client       icapi.ServiceEntryInterface
 	interval     time.Duration
 }
 
-func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, cloudMap cloudmap.Store, client ic.ServiceEntryInterface) *synchronizer {
+func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, cloudMap cloudmap.Store, client icapi.ServiceEntryInterface) *synchronizer {
 	return &synchronizer{
 		owner:        owner,
 		serviceEntry: serviceEntry,
