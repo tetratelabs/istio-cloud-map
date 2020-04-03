@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -48,6 +49,8 @@ func serve() (serve *cobra.Command) {
 		kubeConfig string
 		namespace  string
 		awsRegion  string
+		awsID      string
+		awsSecret  string
 	)
 
 	serve = &cobra.Command{
@@ -76,9 +79,16 @@ func serve() (serve *cobra.Command) {
 			// TODO: move over to run groups, get a context there to use to handle shutdown gracefully.
 			ctx := context.Background() // common context for cancellation across all loops/routines
 
+			// TODO: see if it makes sense to push this down into the CM section after moving to run groups
+			if len(awsRegion) == 0 {
+				if region, set := os.LookupEnv("AWS_REGION"); set {
+					awsRegion = region
+				}
+			}
+
 			cloudMap := cloudmap.NewStore()
 			log.Printf("Starting Cloud Map watcher in %q", awsRegion)
-			cmWatcher, err := cloudmap.NewWatcher(cloudMap, awsRegion)
+			cmWatcher, err := cloudmap.NewWatcher(cloudMap, awsRegion, awsID, awsSecret)
 			if err != nil {
 				return err
 			}
@@ -110,9 +120,13 @@ func serve() (serve *cobra.Command) {
 	serve.PersistentFlags().StringVar(&namespace, "namespace", "",
 		"If provided, the namespace this operator publishes CRDs to. If no value is provided it will be populated from the WATCH_NAMESPACE environment variable.")
 
-	// TODO: see if we can derive automatically when we're deployed in AWS
 	serve.PersistentFlags().StringVar(&awsRegion, "aws-region", "", "AWS Region to connect to Cloud Map in")
-
+	serve.PersistentFlags().StringVar(&awsID, "aws-access-key-id", "",
+		"AWS Key ID to use to connect to Cloud Map. Use flags for both this and aws-secret OR use "+
+			"the environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Flags and env vars cannot be mixed.")
+	serve.PersistentFlags().StringVar(&awsSecret, "aws-secret-access-key", "",
+		"AWS Key ID to use to connect to Cloud Map. Use flags for both this and aws-secret OR use "+
+			"the environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Flags and env vars cannot be mixed.")
 	return serve
 }
 
