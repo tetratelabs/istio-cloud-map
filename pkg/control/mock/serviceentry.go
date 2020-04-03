@@ -32,6 +32,10 @@ func (s *SEStore) Insert(se *v1alpha3.ServiceEntry) error {
 	return nil
 }
 
+func (s *SEStore) Update(_, _ *v1alpha3.ServiceEntry) error {
+	return nil
+}
+
 // Delete is not implemented
 func (s *SEStore) Delete(se *v1alpha3.ServiceEntry) error {
 	return nil
