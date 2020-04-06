@@ -35,9 +35,9 @@ spec:
           valueFrom:
             secretKeyRef:
               key: access-key-id
-              name: aws-credz
+              name: aws-creds
         - name: AWS_SECRET_ACCESS_KEY
           valueFrom:
             secretKeyRef:
               key: secret-access-key
-              name: aws-credz
+              name: aws-creds
