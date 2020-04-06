@@ -95,7 +95,7 @@ make docker-push
 You can override the hub and tag using the `REGISTRY` and `TAG` environment variables:
 
 ```bash
-env REGISTRY=gcr.io/tetratelabs TAG=v0.1 \
+env REGISTRY=gcr.io/tetratelabs TAG=v0.2 \
     make docker-push
 ```
 
