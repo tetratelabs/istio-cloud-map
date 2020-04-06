@@ -1,6 +1,15 @@
 apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-creds
+type: Opaque
+data:
+  access-key-id: <base64-encoded-IAM-access-key-id> # EDIT ME
+  secret-access-key: <base64-encoded-IAM-secret-access-key> # EDIT ME
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: aws-config
 data:
-  aws-region: us-east-2
+  aws-region: us-east-2 # EDIT ME

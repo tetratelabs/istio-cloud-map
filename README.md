@@ -5,27 +5,27 @@ This repo contains an operator for syncing Cloud Map data into Istio by pushing 
 ## Deploying to your Kubernetes cluster
 
 1. Create an [AWS IAM identity](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_access-management.html) with read access to AWS Cloud Map for the operator to use.
-2. Create a Kubernetes secret with the Access Key ID and Secret Access Key of the identity you just created in the namespace you want to deploy the Istio Cloud Map Operator:
-    ```yaml
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      name: aws-credz
-      namespace: istio-system
-    type: Opaque
-    data:
-      access-key-id: <base64-encoded-IAM-access-key-id>
-      secret-access-key: <base64-encoded-IAM-secret-access-key>
-    ```
-3. Edit the aws-config config map in `kubernetes/deployment.yaml` to choose the AWS Cloud Map region to sync with.
-    ```yaml
-    apiVersion: v1
-    kind: ConfigMap
-    metadata:
-      name: aws-config
-    data:
-      aws-region: us-west-2 # EDIT ME!
-    ```
+2. Edit the configuration in `kubernetes/aws-config.yaml`. There are two pieces:
+    - A Kubernetes secret with the Access Key ID and Secret Access Key of the identity you just created in the namespace you want to deploy the Istio Cloud Map Operator:
+      ```yaml
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: aws-creds
+      type: Opaque
+      data:
+        access-key-id: <base64-encoded-IAM-access-key-id> # EDIT ME
+        secret-access-key: <base64-encoded-IAM-secret-access-key> # EDIT ME
+      ```
+    - Edit the `aws-config` config map to choose the AWS Cloud Map region to sync with:
+      ```yaml
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: aws-config
+      data:
+        aws-region: us-west-2 # EDIT ME
+      ```
 4. Deploy the Istio Cloud Map Operator:
     ```bash
     $ kubectl apply -f kubernetes/rbac.yaml -f kubernetes/aws-config.yaml  -f kubernetes/deployment.yaml
@@ -87,11 +87,6 @@ Build with the makefile by:
 make   # or `make build`
 ```
 
-Run with
-```bash
-make run
-```
-
 And produce docker containers via:
 ```bash
 make docker-build
@@ -114,6 +109,11 @@ go build -o istio-cloud-map github.com/tetratelabs/istio-cloud-map/cmd/istio-clo
 
 To run locally:
 ```bash
+# Be sure to set the ENV vars:
+#   AWS_SECRET_ACCESS_KEY
+#   AWS_ACCESS_KEY_ID
+#   AWS_REGION
+
 make run
 # or
 make docker-run
@@ -122,7 +122,12 @@ make docker-run
 or via go:
 ```bash
 go build -o istio-cloud-map github.com/tetratelabs/istio-cloud-map/cmd/istio-cloud-map
-./istio-cloud-map serve --kube-config ~/.kube/config
+
+./istio-cloud-map serve \
+    --kube-config ~/.kube/config \
+    --aws-access-key-id "my access key ID" \
+    --aws-secret-access-key "my secret access key" \
+    --aws-region "us-east-2"
 ```
 
-In particular the controller needs its `--kube-config` flag set to talk to the remote API server. If no flag is set, the controller assumes it is deployed into a Kubernetes cluster and attempts to contact the API server directly.
+In particular the controller needs its `--kube-config` flag set to talk to the remote API server. If no flag is set, the controller assumes it is deployed into a Kubernetes cluster and attempts to contact the API server directly. Similarly, we need AWS credentials; if the flags aren't set we search the `AWS_SECRET_ACCESS_KEY`, `AWS_ACCESS_KEY_ID`, and `AWS_REGION` environment variables.
