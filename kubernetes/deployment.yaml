@@ -22,7 +22,7 @@ spec:
         args:
         - serve
         env:
-        - name: WATCH_NAMESPACE
+        - name: PUBLISH_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace

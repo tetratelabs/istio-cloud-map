@@ -91,6 +91,13 @@ func serve() (serve *cobra.Command) {
 				}
 			}
 
+			// TODO: see if we can push down into the istio setup section
+			if len(namespace) == 0 {
+				if ns, set := os.LookupEnv("PUBLISH_NAMESPACE"); set {
+					namespace = ns
+				}
+			}
+
 			cloudMap := cloudmap.NewStore()
 			log.Printf("Starting Cloud Map watcher in %q", awsRegion)
 			cmWatcher, err := cloudmap.NewWatcher(cloudMap, awsRegion, awsID, awsSecret)
@@ -128,7 +135,7 @@ func serve() (serve *cobra.Command) {
 	serve.PersistentFlags().StringVar(&kubeConfig,
 		"kube-config", "", "kubeconfig location; if empty the server will assume it's in a cluster; for local testing use ~/.kube/config")
 	serve.PersistentFlags().StringVar(&namespace, "namespace", "",
-		"If provided, the namespace this operator publishes CRDs to. If no value is provided it will be populated from the WATCH_NAMESPACE environment variable.")
+		"If provided, the namespace this operator publishes ServiceEntries to. If no value is provided it will be populated from the PUBLISH_NAMESPACE environment variable. If both are empty, the operator will publish into the namespace it is deployed in")
 
 	serve.PersistentFlags().StringVar(&awsRegion, "aws-region", "",
 		"AWS Region to connect to Cloud Map. Use this OR the environment variable AWS_REGION.")

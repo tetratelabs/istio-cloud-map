@@ -78,7 +78,7 @@ This repo contains an operator for syncing Cloud Map data into Istio by pushing 
 | `-h`, `--help` | none | help for serve |
 | `--id` | string | ID of this instance; instances will only ServiceEntries marked with their own ID. (default "istio-cloud-map-operator") |
 | `--kube-config` | string | kubeconfig location; if empty the server will assume it's in a cluster; for local testing use ~/.kube/config |
-| `--namespace` | string | If provided, the namespace this operator publishes CRDs to. If no value is provided it will be populated from the `WATCH_NAMESPACE` environment variable |
+| `--namespace` | string | If provided, the namespace this operator publishes ServiceEntries to. If no value is provided it will be populated from the `PUBLISH_NAMESPACE` environment variable. If all are empty, the operator will publish into the namespace it is deployed in |
 
 ## Building
 
