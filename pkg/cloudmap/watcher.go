@@ -23,10 +23,21 @@ import (
 var serviceFilterNamespaceID = servicediscovery.ServiceFilterNameNamespaceId
 var filterConditionEquals = servicediscovery.FilterConditionEq
 
+// Use an empty string as the token for long-lived credentials (token only needed if using STS)
+// https://pkg.go.dev/github.com/aws/aws-sdk-go/aws/credentials?tab=doc#NewStaticCredentials
+const emptyToken = ""
+
 // NewWatcher returns a Cloud Map watcher
-func NewWatcher(store Store, region string) (*Watcher, error) {
+func NewWatcher(store Store, region, id, secret string) (*Watcher, error) {
+	var creds *credentials.Credentials
+	if len(id) == 0 || len(secret) == 0 {
+		creds = credentials.NewEnvCredentials()
+	} else {
+		creds = credentials.NewStaticCredentials(id, secret, emptyToken)
+	}
+
 	session, err := session.NewSession(&aws.Config{
-		Credentials: credentials.NewEnvCredentials(),
+		Credentials: creds,
 		Region:      aws.String(region),
 	})
 	if err != nil {

@@ -1,6 +1,6 @@
 # override to push to a different registry or tag the image differently
-CONTAINER_REGISTRY ?= gcr.io/tetratelabs
-CONTAINER_TAG ?= v0.1
+REGISTRY ?= gcr.io/tetratelabs
+TAG ?= v0.1
 
 # Make sure we pick up any local overrides.
 -include .makerc
