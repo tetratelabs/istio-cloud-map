@@ -6,57 +6,79 @@ This repo contains an operator for syncing Cloud Map data into Istio by pushing 
 
 1. Create an [AWS IAM identity](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_access-management.html) with read access to AWS Cloud Map for the operator to use.
 2. Create a Kubernetes secret with the Access Key ID and Secret Access Key of the identity you just created in the namespace you want to deploy the Istio Cloud Map Operator:
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: aws-credz
-  namespace: istio-system
-type: Opaque
-data:
-  access-key-id: <base64-encoded-IAM-access-key-id>
-  secret-access-key: <base64-encoded-IAM-secret-access-key>
-```
+    ```yaml
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: aws-credz
+      namespace: istio-system
+    type: Opaque
+    data:
+      access-key-id: <base64-encoded-IAM-access-key-id>
+      secret-access-key: <base64-encoded-IAM-secret-access-key>
+    ```
 3. Edit the aws-config config map in `kubernetes/deployment.yaml` to choose the AWS Cloud Map region to sync with.
+    ```bash
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: aws-config
+    data:
+      aws-region: us-west-2 # EDIT ME!
+    ```
 4. Deploy the Istio Cloud Map Operator:
-```bash
-$ kubectl apply -f kubernetes/rbac.yaml -f kubernetes/deployment.yaml
-```
+    ```bash
+    $ kubectl apply -f kubernetes/rbac.yaml -f kubernetes/aws-config.yaml  -f kubernetes/deployment.yaml
+    ```
 5. Verify that your ServiceEntries have been populated with the information in Cloud Map; there should be one ServiceEntry for every service in Cloud Map:
-```bash
-$ kubectl get serviceentries
-NAME                                       CREATED AT
-cloudmap-dev.null.demo.tetrate.io          17h
-cloudmap-test-server.cloudmap.tetrate.io   17h
-```
-```yaml
-$ kubectl get serviceentries cloudmap-test-server.cloudmap.tetrate.io -o yaml
-apiVersion: networking.istio.io/v1alpha3
-kind: ServiceEntry
-metadata:
-  name: cloudmap-test-server.cloudmap.tetrate.io
-  namespace: default
-spec:
-  addresses:
-  - 172.31.37.168
-  endpoints:
-  - address: 172.31.37.168
-    ports:
-      http: 80
-      https: 443
-  hosts:
-  - test-server.cloudmap.tetrate.io
-  ports:
-  - name: http
-    number: 80
-    protocol: HTTP
-  - name: https
-    number: 443
-    protocol: HTTPS
-  resolution: STATIC
-```
+    ```bash
+    $ kubectl get serviceentries
+    NAME                                       CREATED AT
+    cloudmap-dev.null.demo.tetrate.io          17h
+    cloudmap-test-server.cloudmap.tetrate.io   17h
+    ```
+    ```yaml
+    $ kubectl get serviceentries cloudmap-test-server.cloudmap.tetrate.io -o yaml
+    apiVersion: networking.istio.io/v1alpha3
+    kind: ServiceEntry
+    metadata:
+      name: cloudmap-test-server.cloudmap.tetrate.io
+      namespace: default
+    spec:
+      addresses:
+      - 172.31.37.168
+      endpoints:
+      - address: 172.31.37.168
+        ports:
+          http: 80
+          https: 443
+      hosts:
+      - test-server.cloudmap.tetrate.io
+      ports:
+      - name: http
+        number: 80
+        protocol: HTTP
+      - name: https
+        number: 443
+        protocol: HTTPS
+      resolution: STATIC
+    ```
 
 > Note: If you need to be able to resolve your services via DNS (as opposed to making the requests to a random IP and setting the Host header), either enable DNS propagation in your VPC peering configuration or install the [Istio CoreDNS plugin](https://github.com/istio-ecosystem/istio-coredns-plugin).
+
+## Configuring the Operator
+
+`istio-cloud-map serve` flags:
+| Flag | Type | Description |
+|------|------|-------------|
+| `--aws-access-key-id` | string | AWS Key ID to use to connect to Cloud Map. Use flags for both this and aws-secret OR use the environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Flags and env vars cannot be mixed |
+| `--aws-region` | string | AWS Region to connect to Cloud Map. Use this OR the environment variable AWS_REGION |
+| `--aws-secret-access-key` | string | AWS Key ID to use to connect to Cloud Map. Use flags for both this and aws-secret OR use the environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Flags and env vars cannot be mixed |
+| `--debug` | boolean | if true, enables more logging (default true) |
+| `-h`, `--help` | none | help for serve |
+| `--id` | string | ID of this instance; instances will only ServiceEntries marked with their own ID. (default "istio-cloud-map-operator") |
+| `--kube-config` | string | kubeconfig location; if empty the server will assume it's in a cluster; for local testing use ~/.kube/config |
+| `--namespace` | string | If provided, the namespace this operator publishes CRDs to. If no value is provided it will be populated from the WATCH_NAMESPACE environment variable. |
 
 ## Building
 

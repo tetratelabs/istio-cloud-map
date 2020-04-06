@@ -11,7 +11,6 @@ import (
 )
 
 // ServiceEntry infers an Istio service entry based on provided information
-// TODO: Namespaces...
 func ServiceEntry(owner v1.OwnerReference, host string, endpoints []*v1alpha3.ServiceEntry_Endpoint) *ic.ServiceEntry {
 	addresses := []string{}
 	if len(endpoints) > 0 {

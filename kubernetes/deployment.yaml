@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: istio-cloud-map-operator
-  namespace: istio-system
   labels:
     app: istio-cloud-map
 spec:
@@ -42,11 +41,3 @@ spec:
             secretKeyRef:
               key: secret-access-key
               name: aws-credz
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: aws-config
-  namespace: istio-system
-data:
-  aws-region: us-west-2

@@ -16,8 +16,10 @@ package main
 
 import (
 	"context"
+	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -26,6 +28,7 @@ import (
 	ic "istio.io/client-go/pkg/clientset/versioned"
 	icinformer "istio.io/client-go/pkg/informers/externalversions/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -69,11 +72,13 @@ func serve() (serve *cobra.Command) {
 			}
 
 			t := true
+			sessionUUID := uuid.NewUUID()
 			owner := v1.OwnerReference{
 				APIVersion: "cloudmap.istio.io",
 				Kind:       "ServiceController",
 				Name:       id,
 				Controller: &t,
+				UID:        sessionUUID,
 			}
 
 			// TODO: move over to run groups, get a context there to use to handle shutdown gracefully.
@@ -99,7 +104,12 @@ func serve() (serve *cobra.Command) {
 				istio = serviceentry.NewLoggingStore(istio, log.Printf)
 			}
 			log.Print("Starting Synchronizer control loop")
-			sync := control.NewSynchronizer(owner, istio, cloudMap, ic.NetworkingV1alpha3().ServiceEntries(allNamespaces))
+
+			// we get the service entry for namespace `namespace` for the synchronizer to publish service entries in to
+			// (if we use an `allNamespaces` client here we can't publish). Listening for ServiceEntries is done with
+			// the informer, which uses allNamespace.
+			write := ic.NetworkingV1alpha3().ServiceEntries(findNamespace(namespace))
+			sync := control.NewSynchronizer(owner, istio, cloudMap, write)
 			go sync.Run(ctx)
 
 			informer := icinformer.NewServiceEntryInformer(ic, allNamespaces, 5*time.Second,
@@ -120,7 +130,8 @@ func serve() (serve *cobra.Command) {
 	serve.PersistentFlags().StringVar(&namespace, "namespace", "",
 		"If provided, the namespace this operator publishes CRDs to. If no value is provided it will be populated from the WATCH_NAMESPACE environment variable.")
 
-	serve.PersistentFlags().StringVar(&awsRegion, "aws-region", "", "AWS Region to connect to Cloud Map in")
+	serve.PersistentFlags().StringVar(&awsRegion, "aws-region", "",
+		"AWS Region to connect to Cloud Map. Use this OR the environment variable AWS_REGION.")
 	serve.PersistentFlags().StringVar(&awsID, "aws-access-key-id", "",
 		"AWS Key ID to use to connect to Cloud Map. Use flags for both this and aws-secret OR use "+
 			"the environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Flags and env vars cannot be mixed.")
@@ -140,4 +151,28 @@ func main() {
 	if err := root.Execute(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func findNamespace(namespace string) string {
+	if len(namespace) > 0 {
+		log.Printf("using namespace flag to publish service entries into %q", namespace)
+		return namespace
+	}
+	// This way assumes you've set the POD_NAMESPACE environment variable using the downward API.
+	// This check has to be done first for backwards compatibility with the way InClusterConfig was originally set up
+	if ns, ok := os.LookupEnv("POD_NAMESPACE"); ok {
+		log.Printf("using POD_NAMESPACE environment variable to publish service entries into %q", namespace)
+		return ns
+	}
+
+	// Fall back to the namespace associated with the service account token, if available
+	if data, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
+		if ns := strings.TrimSpace(string(data)); len(ns) > 0 {
+			log.Printf("using service account namespace from pod filesystem to publish service entries into %q", namespace)
+			return ns
+		}
+	}
+
+	log.Printf("couldn't determine a namespace, falling back to %q", "default")
+	return "default"
 }

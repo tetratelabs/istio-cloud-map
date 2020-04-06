@@ -15,9 +15,11 @@
 package serviceentry
 
 import (
+	"log"
 	"reflect"
 	"sync"
 
+	"github.com/golang/protobuf/proto"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -39,6 +41,9 @@ type (
 
 		// Insert adds a ServiceEntry to the store (detecting who it belongs to)
 		Insert(se *v1alpha3.ServiceEntry) error
+
+		// Update updates a ServiceEntry's claimed hosts in the store
+		Update(old, newse *v1alpha3.ServiceEntry) error
 
 		// Delete removes a ServiceEntry from the store
 		Delete(se *v1alpha3.ServiceEntry) error
@@ -103,9 +108,40 @@ func (s *store) Theirs() map[string]*v1alpha3.ServiceEntry {
 }
 
 func (s *store) Insert(se *v1alpha3.ServiceEntry) error {
-	owner := owner(s.ref, se.GetObjectMeta().GetOwnerReferences())
+	owner := owner(s.ref, se.GetOwnerReferences())
 	// as a single update, we insert all hosts owned by the ServiceEntry
 	s.m.Lock()
+	s.add(owner, se)
+	s.m.Unlock()
+	return nil
+}
+
+func (s *store) Update(old, se *v1alpha3.ServiceEntry) error {
+	if proto.Equal(&old.Spec, &se.Spec) {
+		log.Printf("skipping update, no change")
+		return nil
+	}
+
+	oldOwner := owner(s.ref, old.GetOwnerReferences())
+	owner := owner(s.ref, se.GetOwnerReferences())
+
+	s.m.Lock()
+	s.delete(oldOwner, old)
+	s.add(owner, se)
+	s.m.Unlock()
+	return nil
+}
+
+func (s *store) Delete(se *v1alpha3.ServiceEntry) error {
+	owner := owner(s.ref, se.GetObjectMeta().GetOwnerReferences())
+	// as a single update, we delete all hosts owned by the ServiceEntry
+	s.m.Lock()
+	s.delete(owner, se)
+	s.m.Unlock()
+	return nil
+}
+
+func (s *store) add(owner Owner, se *v1alpha3.ServiceEntry) {
 	switch owner {
 	case None, Us:
 		for _, host := range se.Spec.Hosts {
@@ -116,14 +152,9 @@ func (s *store) Insert(se *v1alpha3.ServiceEntry) error {
 			s.theirs[host] = se
 		}
 	}
-	s.m.Unlock()
-	return nil
 }
 
-func (s *store) Delete(se *v1alpha3.ServiceEntry) error {
-	owner := owner(s.ref, se.GetObjectMeta().GetOwnerReferences())
-	// as a single update, we delete all hosts owned by the ServiceEntry
-	s.m.Lock()
+func (s *store) delete(owner Owner, se *v1alpha3.ServiceEntry) {
 	switch owner {
 	case Us:
 		for _, host := range se.Spec.Hosts {
@@ -142,8 +173,6 @@ func (s *store) Delete(se *v1alpha3.ServiceEntry) error {
 			delete(s.theirs, host)
 		}
 	}
-	s.m.Unlock()
-	return nil
 }
 
 func owner(self v1.OwnerReference, refs []v1.OwnerReference) Owner {
@@ -208,6 +237,12 @@ func (l LoggingStore) Theirs() map[string]*v1alpha3.ServiceEntry {
 func (l LoggingStore) Insert(se *v1alpha3.ServiceEntry) error {
 	err := l.s.Insert(se)
 	l.log("inserted %v with result %v", se, err)
+	return err
+}
+
+func (l LoggingStore) Update(old, se *v1alpha3.ServiceEntry) error {
+	err := l.s.Update(old, se)
+	l.log("updated %v to %v with result %v", old, se, err)
 	return err
 }
 

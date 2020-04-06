@@ -38,10 +38,7 @@ func (c handler) OnAdd(obj interface{}) {
 func (c handler) OnUpdate(oldObj, newObj interface{}) {
 	old := oldObj.(*v1alpha3.ServiceEntry)
 	se := newObj.(*v1alpha3.ServiceEntry)
-
-	// order matters here, since it's likely these work on the same set of hosts: delete the old first, then add the new
-	c.Delete(old)
-	c.Insert(se)
+	c.Update(old, se)
 }
 
 func (c handler) OnDelete(obj interface{}) {
