@@ -22,12 +22,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
 	ic "istio.io/client-go/pkg/clientset/versioned"
 	icinformer "istio.io/client-go/pkg/informers/externalversions/networking/v1alpha3"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -98,9 +100,9 @@ func serve() (serve *cobra.Command) {
 				}
 			}
 
-			cloudMap := cloudmap.NewStore()
+			store := provider.NewStore()
 			log.Printf("Starting Cloud Map watcher in %q", awsRegion)
-			cmWatcher, err := cloudmap.NewWatcher(cloudMap, awsRegion, awsID, awsSecret)
+			cmWatcher, err := cloudmap.NewWatcher(store, awsRegion, awsID, awsSecret)
 			if err != nil {
 				return err
 			}
@@ -116,7 +118,7 @@ func serve() (serve *cobra.Command) {
 			// (if we use an `allNamespaces` client here we can't publish). Listening for ServiceEntries is done with
 			// the informer, which uses allNamespace.
 			write := ic.NetworkingV1alpha3().ServiceEntries(findNamespace(namespace))
-			sync := control.NewSynchronizer(owner, istio, cloudMap, write)
+			sync := control.NewSynchronizer(owner, istio, store, write)
 			go sync.Run(ctx)
 
 			informer := icinformer.NewServiceEntryInformer(ic, allNamespaces, 5*time.Second,

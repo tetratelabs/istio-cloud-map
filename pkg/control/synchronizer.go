@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
+
 	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
 	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
 	"istio.io/api/networking/v1alpha3"
@@ -13,21 +15,15 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Store describes a set of Istio endpoint objects from Cloud Map stored by the hostnames that own them.
-type Store interface {
-	// Hosts are all hosts Cloud Map has told us about
-	Hosts() map[string][]*v1alpha3.ServiceEntry_Endpoint
-}
-
 type synchronizer struct {
 	owner        v1.OwnerReference
 	serviceEntry serviceentry.Store
-	store        Store
+	store        provider.Store
 	client       icapi.ServiceEntryInterface
 	interval     time.Duration
 }
 
-func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, store Store, client icapi.ServiceEntryInterface) *synchronizer {
+func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, store provider.Store, client icapi.ServiceEntryInterface) *synchronizer {
 	return &synchronizer{
 		owner:        owner,
 		serviceEntry: serviceEntry,

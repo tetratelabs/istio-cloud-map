@@ -7,16 +7,16 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/pkg/errors"
 	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
-
-	"istio.io/api/networking/v1alpha3"
+	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/servicediscovery"
 	"github.com/aws/aws-sdk-go/service/servicediscovery/servicediscoveryiface"
+	"github.com/pkg/errors"
+	"istio.io/api/networking/v1alpha3"
 )
 
 // consts aren't memory addressable in Go
@@ -28,7 +28,7 @@ var filterConditionEquals = servicediscovery.FilterConditionEq
 const emptyToken = ""
 
 // NewWatcher returns a Cloud Map watcher
-func NewWatcher(store *Store, region, id, secret string) (*Watcher, error) {
+func NewWatcher(store provider.Store, region, id, secret string) (provider.Watcher, error) {
 	var creds *credentials.Credentials
 	if len(id) == 0 || len(secret) == 0 {
 		creds = credentials.NewEnvCredentials()
@@ -43,18 +43,20 @@ func NewWatcher(store *Store, region, id, secret string) (*Watcher, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error setting up AWS session")
 	}
-	return &Watcher{cloudmap: servicediscovery.New(session), store: store, interval: time.Second * 5}, nil
+	return &watcher{cloudmap: servicediscovery.New(session), store: store, interval: time.Second * 5}, nil
 }
 
-// Watcher polls Cloud Map and caches a list of services and their instances
-type Watcher struct {
+// watcher polls Cloud Map and caches a list of services and their instances
+type watcher struct {
 	cloudmap servicediscoveryiface.ServiceDiscoveryAPI
-	store    *Store
+	store    provider.Store
 	interval time.Duration
 }
 
+var _ provider.Watcher = &watcher{}
+
 // Run the watcher until the context is cancelled
-func (w *Watcher) Run(ctx context.Context) {
+func (w *watcher) Run(ctx context.Context) {
 	tick := time.NewTicker(w.interval).C
 	// Initial sync on startup
 	w.refreshStore()
@@ -68,7 +70,7 @@ func (w *Watcher) Run(ctx context.Context) {
 	}
 }
 
-func (w *Watcher) refreshStore() {
+func (w *watcher) refreshStore() {
 	log.Print("Syncing Cloud Map store")
 	// TODO: allow users to specify namespaces to watch
 	nsResp, err := w.cloudmap.ListNamespaces(&servicediscovery.ListNamespacesInput{})
@@ -90,10 +92,10 @@ func (w *Watcher) refreshStore() {
 		}
 	}
 	log.Print("Cloud Map store sync successful")
-	w.store.set(tempStore)
+	w.store.Set(tempStore)
 }
 
-func (w *Watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[string][]*v1alpha3.ServiceEntry_Endpoint, error) {
+func (w *watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[string][]*v1alpha3.ServiceEntry_Endpoint, error) {
 	hosts := map[string][]*v1alpha3.ServiceEntry_Endpoint{}
 	svcResp, err := w.cloudmap.ListServices(&servicediscovery.ListServicesInput{
 		Filters: []*servicediscovery.ServiceFilter{
@@ -119,7 +121,7 @@ func (w *Watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[
 	return hosts, nil
 }
 
-func (w *Watcher) endpointsForService(svc *servicediscovery.ServiceSummary, ns *servicediscovery.NamespaceSummary) ([]*v1alpha3.ServiceEntry_Endpoint, error) {
+func (w *watcher) endpointsForService(svc *servicediscovery.ServiceSummary, ns *servicediscovery.NamespaceSummary) ([]*v1alpha3.ServiceEntry_Endpoint, error) {
 	// TODO: use health filter?
 	instOutput, err := w.cloudmap.DiscoverInstances(&servicediscovery.DiscoverInstancesInput{ServiceName: svc.Name, NamespaceName: ns.Name})
 	if err != nil {

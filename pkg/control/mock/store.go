@@ -11,3 +11,7 @@ type Store struct {
 func (s *Store) Hosts() map[string][]*v1alpha3.ServiceEntry_Endpoint {
 	return s.Result
 }
+
+func (s *Store) Set(map[string][]*v1alpha3.ServiceEntry_Endpoint) {
+	return
+}

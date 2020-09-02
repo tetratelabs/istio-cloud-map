@@ -1,4 +1,4 @@
-package cloudmap
+package provider
 
 import (
 	"sync"
@@ -7,27 +7,35 @@ import (
 )
 
 type (
-	Store struct {
+	// Store describes a set of Istio endpoint objects from Cloud Map/Consul stored by the hostnames that own them.
+	// It is asynchronously accessed by a provider and the synchronizer
+	Store interface {
+		// Hosts are all hosts Cloud Map has told us about
+		Hosts() map[string][]*v1alpha3.ServiceEntry_Endpoint
+		Set(hosts map[string][]*v1alpha3.ServiceEntry_Endpoint)
+	}
+
+	store struct {
 		m     *sync.RWMutex
 		hosts map[string][]*v1alpha3.ServiceEntry_Endpoint // maps host->Endpoints
 	}
 )
 
 // NewStore returns a store for Cloud Map data which implements control.Store
-func NewStore() *Store {
-	return &Store{
+func NewStore() Store {
+	return &store{
 		hosts: make(map[string][]*v1alpha3.ServiceEntry_Endpoint),
 		m:     &sync.RWMutex{},
 	}
 }
 
-func (s *Store) Hosts() map[string][]*v1alpha3.ServiceEntry_Endpoint {
+func (s *store) Hosts() map[string][]*v1alpha3.ServiceEntry_Endpoint {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	return copyMap(s.hosts)
 }
 
-func (s *Store) set(hosts map[string][]*v1alpha3.ServiceEntry_Endpoint) {
+func (s *store) Set(hosts map[string][]*v1alpha3.ServiceEntry_Endpoint) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.hosts = copyMap(hosts)
