@@ -7,33 +7,27 @@ import (
 )
 
 type (
-	// Store describes a set of Istio endpoint objects from Cloud Map stored by the hostnames that own them.
-	Store interface {
-		// Hosts are all hosts Cloud Map has told us about
-		Hosts() map[string][]*v1alpha3.ServiceEntry_Endpoint
-	}
-
-	store struct {
+	Store struct {
 		m     *sync.RWMutex
 		hosts map[string][]*v1alpha3.ServiceEntry_Endpoint // maps host->Endpoints
 	}
 )
 
-// NewStore returns a store for Cloud Map data
-func NewStore() Store {
-	return &store{
+// NewStore returns a store for Cloud Map data which implements control.Store
+func NewStore() *Store {
+	return &Store{
 		hosts: make(map[string][]*v1alpha3.ServiceEntry_Endpoint),
 		m:     &sync.RWMutex{},
 	}
 }
 
-func (s *store) Hosts() map[string][]*v1alpha3.ServiceEntry_Endpoint {
+func (s *Store) Hosts() map[string][]*v1alpha3.ServiceEntry_Endpoint {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	return copyMap(s.hosts)
 }
 
-func (s *store) set(hosts map[string][]*v1alpha3.ServiceEntry_Endpoint) {
+func (s *Store) set(hosts map[string][]*v1alpha3.ServiceEntry_Endpoint) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.hosts = copyMap(hosts)

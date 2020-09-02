@@ -6,27 +6,32 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tetratelabs/istio-cloud-map/pkg/cloudmap"
 	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
 	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
 	"istio.io/api/networking/v1alpha3"
 	icapi "istio.io/client-go/pkg/clientset/versioned/typed/networking/v1alpha3"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// Store describes a set of Istio endpoint objects from Cloud Map stored by the hostnames that own them.
+type Store interface {
+	// Hosts are all hosts Cloud Map has told us about
+	Hosts() map[string][]*v1alpha3.ServiceEntry_Endpoint
+}
 
 type synchronizer struct {
 	owner        v1.OwnerReference
 	serviceEntry serviceentry.Store
-	cloudMap     cloudmap.Store
+	store        Store
 	client       icapi.ServiceEntryInterface
 	interval     time.Duration
 }
 
-func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, cloudMap cloudmap.Store, client icapi.ServiceEntryInterface) *synchronizer {
+func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, store Store, client icapi.ServiceEntryInterface) *synchronizer {
 	return &synchronizer{
 		owner:        owner,
 		serviceEntry: serviceEntry,
-		cloudMap:     cloudMap,
+		store:        store,
 		client:       client,
 		interval:     time.Second * 5,
 	}
@@ -48,7 +53,7 @@ func (s *synchronizer) Run(ctx context.Context) {
 func (s *synchronizer) sync() {
 	// Entries are generated per host; entirely from information in the slice of endpoints;
 	// so we only actually need to compare the current endpoints with the new endpoints.
-	for host, endpoints := range s.cloudMap.Hosts() {
+	for host, endpoints := range s.store.Hosts() {
 		// If a service entry with the same host has been created by someone else, continue.
 		if _, ok := s.serviceEntry.Theirs()[host]; ok {
 			continue
@@ -92,7 +97,7 @@ func (s *synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.Service
 func (s *synchronizer) garbageCollect() {
 	for host := range s.serviceEntry.Ours() {
 		// If host no longer exists, delete service entry
-		if _, ok := s.cloudMap.Hosts()[host]; !ok {
+		if _, ok := s.store.Hosts()[host]; !ok {
 			// TODO: namespaces!
 			// TODO: Don't attempt to delete no owners
 			if err := s.client.Delete(infer.ServiceEntryName(host), &v1.DeleteOptions{}); err != nil {

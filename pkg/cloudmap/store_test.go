@@ -12,7 +12,7 @@ func Test_store(t *testing.T) {
 			&v1alpha3.ServiceEntry_Endpoint{Address: "1.1.1.1", Ports: map[string]uint32{"http": 80}},
 		}}
 		st := NewStore()
-		st.(*store).set(in)
+		st.set(in)
 		in["tetrate"] = []*v1alpha3.ServiceEntry_Endpoint{
 			&v1alpha3.ServiceEntry_Endpoint{Address: "8.8.8.8", Ports: map[string]uint32{"http": 80}},
 		}

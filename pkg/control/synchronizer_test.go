@@ -3,7 +3,7 @@ package control
 import (
 	"testing"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
 	"istio.io/api/networking/v1alpha3"
@@ -70,7 +70,7 @@ func TestSynchronizer_garbageCollect(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &synchronizer{
-				cloudMap:     &mock.CMStore{Result: tt.cloudMapHosts},
+				store:        &mock.Store{Result: tt.cloudMapHosts},
 				serviceEntry: &mock.SEStore{Result: tt.serviceEntries},
 				client:       &mockIstio{store: make(map[string]*icapi.ServiceEntry)},
 			}
@@ -137,7 +137,7 @@ func TestSynchronizer_createOrUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &synchronizer{
-				cloudMap:     &mock.CMStore{Result: tt.cloudMapHosts},
+				store:        &mock.Store{Result: tt.cloudMapHosts},
 				serviceEntry: &mock.SEStore{Result: tt.serviceEntries},
 				client:       &mockIstio{store: make(map[string]*icapi.ServiceEntry)},
 			}

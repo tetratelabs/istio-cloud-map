@@ -28,7 +28,7 @@ var filterConditionEquals = servicediscovery.FilterConditionEq
 const emptyToken = ""
 
 // NewWatcher returns a Cloud Map watcher
-func NewWatcher(store Store, region, id, secret string) (*Watcher, error) {
+func NewWatcher(store *Store, region, id, secret string) (*Watcher, error) {
 	var creds *credentials.Credentials
 	if len(id) == 0 || len(secret) == 0 {
 		creds = credentials.NewEnvCredentials()
@@ -49,7 +49,7 @@ func NewWatcher(store Store, region, id, secret string) (*Watcher, error) {
 // Watcher polls Cloud Map and caches a list of services and their instances
 type Watcher struct {
 	cloudmap servicediscoveryiface.ServiceDiscoveryAPI
-	store    Store
+	store    *Store
 	interval time.Duration
 }
 
@@ -90,7 +90,7 @@ func (w *Watcher) refreshStore() {
 		}
 	}
 	log.Print("Cloud Map store sync successful")
-	w.store.(*store).set(tempStore)
+	w.store.set(tempStore)
 }
 
 func (w *Watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[string][]*v1alpha3.ServiceEntry_Endpoint, error) {
@@ -136,7 +136,7 @@ func (w *Watcher) endpointsForService(svc *servicediscovery.ServiceSummary, ns *
 }
 
 func instancesToEndpoints(instances []*servicediscovery.HttpInstanceSummary) []*v1alpha3.ServiceEntry_Endpoint {
-	eps := []*v1alpha3.ServiceEntry_Endpoint{}
+	eps := make([]*v1alpha3.ServiceEntry_Endpoint, 0, len(instances))
 	for _, inst := range instances {
 		ep := instanceToEndpoint(inst)
 		if ep != nil {
