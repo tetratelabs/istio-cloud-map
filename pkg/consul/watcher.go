@@ -1,4 +1,4 @@
-package cloudmap
+package consul
 
 import (
 	"context"
@@ -50,11 +50,7 @@ func (w *watcher) refreshStore() {
 		return
 	}
 
-	css, err := w.describeServices(names)
-	if err != nil {
-		log.Printf("error describing service catalog from Consul:%v ", err)
-		return
-	}
+	css := w.describeServices(names)
 
 	data := make(map[string][]*v1alpha3.ServiceEntry_Endpoint, len(css))
 	for name, cs := range css {
@@ -73,7 +69,7 @@ func (w *watcher) refreshStore() {
 
 // listServices lists services
 func (w *watcher) listServices() (map[string][]string, error) {
-	// TODO: support Namespace? Namespaces are available only in Consul Enterprise as of 1.7.0
+	// TODO: support Namespace? Namespaces are available only in Consul Enterprise(+1.7.0)
 	data, _, err := w.client.Catalog().Services(nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list services")
@@ -82,16 +78,25 @@ func (w *watcher) listServices() (map[string][]string, error) {
 }
 
 // describeServices gets catalog services for given service names
-func (w *watcher) describeServices(names map[string][]string) (map[string][]*api.CatalogService, error) {
+func (w *watcher) describeServices(names map[string][]string) map[string][]*api.CatalogService {
 	ss := make(map[string][]*api.CatalogService, len(names))
 	for name := range names { // ignore tags in value
-		svcs, _, err := w.client.Catalog().Service(name, "", nil)
+		svcs, err := w.describeService(name)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to describe svc: %s", name)
+			log.Printf("error describing service catalog from Consul: %v ", err)
+			continue
 		}
 		ss[name] = svcs
 	}
-	return ss, nil
+	return ss
+}
+
+func (w *watcher) describeService(name string) ([]*api.CatalogService, error) {
+	svcs, _, err := w.client.Catalog().Service(name, "", nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to describe svc: %s", name)
+	}
+	return svcs, nil
 }
 
 // catalogServiceToEndpoints converts catalog service to service entry endpoint

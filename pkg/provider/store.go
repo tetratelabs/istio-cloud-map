@@ -21,7 +21,7 @@ type (
 	}
 )
 
-// NewStore returns a store for Cloud Map data which implements control.Store
+// NewStore returns a store
 func NewStore() Store {
 	return &store{
 		hosts: make(map[string][]*v1alpha3.ServiceEntry_Endpoint),
