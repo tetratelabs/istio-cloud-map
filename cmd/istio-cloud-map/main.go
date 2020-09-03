@@ -48,14 +48,15 @@ const (
 )
 
 var (
-	id             string
-	debug          bool
-	kubeConfig     string
-	namespace      string
-	awsRegion      string
-	awsID          string
-	awsSecret      string
-	consulEndpoint string
+	id              string
+	debug           bool
+	kubeConfig      string
+	namespace       string
+	awsRegion       string
+	awsID           string
+	awsSecret       string
+	consulEndpoint  string
+	consulNamespace string
 )
 
 func serve() (serve *cobra.Command) {
@@ -141,7 +142,9 @@ func serve() (serve *cobra.Command) {
 		"AWS Secret Access Key to use to connect to Cloud Map. Use flags for both this and --aws-access-key-id OR use "+
 			"the environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Flags and env vars cannot be mixed.")
 	serve.PersistentFlags().StringVar(&consulEndpoint, "consul-endpoint", "",
-		"Consul's endpoint to query service catalog. This must includes its scheme http// or https//. (e.g. http://localhost:8500)")
+		"Consul's endpoint to query service catalog. This must include its scheme http// or https//. (e.g. http://localhost:8500)")
+	serve.PersistentFlags().StringVar(&consulNamespace, "consul-namespace", "",
+		"Consul's namespace to search service catalog")
 	return serve
 }
 
@@ -152,7 +155,7 @@ func getWatcher() (provider.Watcher, error) {
 	if awsErr == nil {
 		log.Infof("Cloud Map Watcher initialized in %q", awsRegion)
 	}
-	consulWatcher, consulErr := consul.NewWatcher(store, consulEndpoint)
+	consulWatcher, consulErr := consul.NewWatcher(store, consulEndpoint, consulNamespace)
 	if consulErr == nil {
 		log.Infof("Consul Watcher initialized at %s", consulEndpoint)
 	}
@@ -163,6 +166,9 @@ func getWatcher() (provider.Watcher, error) {
 		log.Errorf("error setting up consul: %v", consulErr)
 		return nil, errors.New("failed to initialize watchers")
 	} else if awsErr == nil {
+		// here we prioritize Cloud Map over Consul.
+		// TODO: should we support both sources simultaneously?
+		//   To do so, we need to modify synchronizer to support multiple Stores
 		watcher = cmWatcher
 	} else {
 		watcher = consulWatcher

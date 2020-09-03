@@ -21,12 +21,12 @@ type watcher struct {
 	store        provider.Store
 	tickInterval time.Duration
 	lastIndex    uint64 // lastly synced index of Catalog
+	namespace    string
 }
 
 var _ provider.Watcher = &watcher{}
 
-func NewWatcher(store provider.Store, endpoint string) (provider.Watcher, error) {
-	// TODO: allow users to specify TOKEN
+func NewWatcher(store provider.Store, endpoint string, namespace string) (provider.Watcher, error) {
 	if len(endpoint) == 0 {
 		return nil, errors.New("Consul endpoint not specified")
 	}
@@ -36,14 +36,22 @@ func NewWatcher(store provider.Store, endpoint string) (provider.Watcher, error)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing endpoint")
 	}
+
+	// TODO: allow users to specify TOKEN
+	// TODO: Since namespace feature is only available in Enterprise (+1.7.0), we haven't tested yet
 	config.Scheme = url.Scheme
 	config.Address = url.Host
+	config.WaitTime = 5 * time.Second
 
 	client, err := api.NewClient(config)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
-	return &watcher{client: client, store: store, tickInterval: time.Second * 10}, nil
+	return &watcher{client: client,
+		store:        store,
+		tickInterval: time.Second * 10,
+		namespace:    namespace,
+	}, nil
 }
 
 func (w *watcher) Store() provider.Store {
@@ -82,7 +90,6 @@ func (w *watcher) refreshStore() {
 	}
 
 	css := w.describeServices(names)
-
 	data := make(map[string][]*v1alpha3.ServiceEntry_Endpoint, len(css))
 	for name, cs := range css {
 		eps := make([]*v1alpha3.ServiceEntry_Endpoint, 0, len(cs))
@@ -100,9 +107,8 @@ func (w *watcher) refreshStore() {
 
 // listServices lists services
 func (w *watcher) listServices() (map[string][]string, error) {
-	// TODO: support Namespace? Namespaces are available only in Consul Enterprise(+1.7.0)
 	data, metadata, err := w.client.Catalog().Services(
-		&api.QueryOptions{WaitIndex: w.lastIndex},
+		&api.QueryOptions{WaitIndex: w.lastIndex, Namespace: w.namespace},
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list services")
@@ -132,7 +138,9 @@ func (w *watcher) describeServices(names map[string][]string) map[string][]*api.
 }
 
 func (w *watcher) describeService(name string) ([]*api.CatalogService, error) {
-	svcs, _, err := w.client.Catalog().Service(name, "", nil)
+	svcs, _, err := w.client.Catalog().Service(name, "", &api.QueryOptions{
+		Namespace: w.namespace,
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to describe svc: %s", name)
 	}

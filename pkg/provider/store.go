@@ -10,7 +10,7 @@ type (
 	// Store describes a set of Istio endpoint objects from Cloud Map/Consul stored by the hostnames that own them.
 	// It is asynchronously accessed by a provider and the synchronizer
 	Store interface {
-		// Hosts are all hosts Cloud Map has told us about
+		// Hosts are all hosts Cloud Map/Consul has told us about
 		Hosts() map[string][]*v1alpha3.ServiceEntry_Endpoint
 		Set(hosts map[string][]*v1alpha3.ServiceEntry_Endpoint)
 	}
