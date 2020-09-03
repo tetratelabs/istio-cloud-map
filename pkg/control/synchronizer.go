@@ -35,10 +35,12 @@ func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, s
 
 // Run the synchronizer until the context is cancelled
 func (s *synchronizer) Run(ctx context.Context) {
-	tick := time.NewTicker(s.interval).C
+	ticker := time.NewTicker(s.interval)
+	defer ticker.Stop()
+
 	for {
 		select {
-		case <-tick:
+		case <-ticker.C:
 			s.sync()
 		case <-ctx.Done():
 			return

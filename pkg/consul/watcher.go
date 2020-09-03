@@ -30,12 +30,13 @@ func NewWatcher(store provider.Store, client *api.Client) provider.Watcher {
 
 // Run the watcher until the context is cancelled
 func (w *watcher) Run(ctx context.Context) {
-	tick := time.NewTicker(w.tickInterval).C
+	ticker := time.NewTicker(w.tickInterval)
+	defer ticker.Stop()
 
 	w.refreshStore() // init
 	for {
 		select {
-		case <-tick:
+		case <-ticker.C:
 			w.refreshStore()
 		case <-ctx.Done():
 			return

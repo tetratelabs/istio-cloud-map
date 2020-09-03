@@ -57,12 +57,14 @@ var _ provider.Watcher = &watcher{}
 
 // Run the watcher until the context is cancelled
 func (w *watcher) Run(ctx context.Context) {
-	tick := time.NewTicker(w.interval).C
+	ticker := time.NewTicker(w.interval)
+	defer ticker.Stop()
+
 	// Initial sync on startup
 	w.refreshStore()
 	for {
 		select {
-		case <-tick:
+		case <-ticker.C:
 			w.refreshStore()
 		case <-ctx.Done():
 			return
