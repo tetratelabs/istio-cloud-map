@@ -3,6 +3,7 @@ package cloudmap
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -29,6 +30,13 @@ const emptyToken = ""
 
 // NewWatcher returns a Cloud Map watcher
 func NewWatcher(store provider.Store, region, id, secret string) (provider.Watcher, error) {
+	if len(region) == 0 {
+		var ok bool
+		if region, ok = os.LookupEnv("AWS_REGION"); !ok {
+			return nil, errors.New("AWS region must be specified")
+		}
+	}
+
 	var creds *credentials.Credentials
 	if len(id) == 0 || len(secret) == 0 {
 		creds = credentials.NewEnvCredentials()
@@ -54,6 +62,14 @@ type watcher struct {
 }
 
 var _ provider.Watcher = &watcher{}
+
+func (w *watcher) Store() provider.Store {
+	return w.store
+}
+
+func (w *watcher) Prefix() string {
+	return "cloudmap-"
+}
 
 // Run the watcher until the context is cancelled
 func (w *watcher) Run(ctx context.Context) {

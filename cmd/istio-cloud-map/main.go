@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/tetratelabs/istio-cloud-map/pkg/cloudmap"
+	"github.com/tetratelabs/istio-cloud-map/pkg/consul"
 	"github.com/tetratelabs/istio-cloud-map/pkg/control"
 	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
 	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
@@ -46,16 +47,18 @@ const (
 	resyncPeriod  = 30
 )
 
+var (
+	id             string
+	debug          bool
+	kubeConfig     string
+	namespace      string
+	awsRegion      string
+	awsID          string
+	awsSecret      string
+	consulEndpoint string
+)
+
 func serve() (serve *cobra.Command) {
-	var (
-		id         string
-		debug      bool
-		kubeConfig string
-		namespace  string
-		awsRegion  string
-		awsID      string
-		awsSecret  string
-	)
 
 	serve = &cobra.Command{
 		Use:     "serve",
@@ -85,13 +88,6 @@ func serve() (serve *cobra.Command) {
 			// TODO: move over to run groups, get a context there to use to handle shutdown gracefully.
 			ctx := context.Background() // common context for cancellation across all loops/routines
 
-			// TODO: see if it makes sense to push this down into the CM section after moving to run groups
-			if len(awsRegion) == 0 {
-				if region, set := os.LookupEnv("AWS_REGION"); set {
-					awsRegion = region
-				}
-			}
-
 			// TODO: see if we can push down into the istio setup section
 			if len(namespace) == 0 {
 				if ns, set := os.LookupEnv("PUBLISH_NAMESPACE"); set {
@@ -99,14 +95,12 @@ func serve() (serve *cobra.Command) {
 				}
 			}
 
-			store := provider.NewStore()
-			log.Infof("Starting Cloud Map watcher in %q", awsRegion)
-			cmWatcher, err := cloudmap.NewWatcher(store, awsRegion, awsID, awsSecret)
+			watcher, err := getWatcher()
 			if err != nil {
 				return err
 			}
-			go cmWatcher.Run(ctx)
 
+			go watcher.Run(ctx)
 			istio := serviceentry.New(owner)
 			if debug {
 				istio = serviceentry.NewLoggingStore(istio, log.Infof)
@@ -117,7 +111,7 @@ func serve() (serve *cobra.Command) {
 			// (if we use an `allNamespaces` client here we can't publish). Listening for ServiceEntries is done with
 			// the informer, which uses allNamespace.
 			write := ic.NetworkingV1alpha3().ServiceEntries(findNamespace(namespace))
-			sync := control.NewSynchronizer(owner, istio, store, write)
+			sync := control.NewSynchronizer(owner, istio, watcher.Store(), watcher.Prefix(), write)
 			go sync.Run(ctx)
 
 			informer := icinformer.NewServiceEntryInformer(ic, allNamespaces, 5*time.Second,
@@ -146,7 +140,35 @@ func serve() (serve *cobra.Command) {
 	serve.PersistentFlags().StringVar(&awsSecret, "aws-secret-access-key", "",
 		"AWS Secret Access Key to use to connect to Cloud Map. Use flags for both this and --aws-access-key-id OR use "+
 			"the environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Flags and env vars cannot be mixed.")
+	serve.PersistentFlags().StringVar(&consulEndpoint, "consul-endpoint", "",
+		"Consul's endpoint to query service catalog. This must includes its scheme http// or https//. (e.g. http://localhost:8500)")
 	return serve
+}
+
+func getWatcher() (provider.Watcher, error) {
+	store := provider.NewStore()
+	log.Info("Initializing Watchers")
+	cmWatcher, awsErr := cloudmap.NewWatcher(store, awsRegion, awsID, awsSecret)
+	if awsErr == nil {
+		log.Infof("Cloud Map Watcher initialized in %q", awsRegion)
+	}
+	consulWatcher, consulErr := consul.NewWatcher(store, consulEndpoint)
+	if consulErr == nil {
+		log.Infof("Consul Watcher initialized at %s", consulEndpoint)
+	}
+
+	var watcher provider.Watcher
+	if awsErr != nil && consulErr != nil {
+		log.Errorf("error setting up aws: %v", awsErr)
+		log.Errorf("error setting up consul: %v", consulErr)
+		return nil, errors.New("failed to initialize watchers")
+	} else if awsErr == nil {
+		watcher = cmWatcher
+	} else {
+		watcher = consulWatcher
+	}
+
+	return watcher, nil
 }
 
 func main() {

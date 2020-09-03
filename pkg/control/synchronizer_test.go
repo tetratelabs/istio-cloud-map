@@ -29,7 +29,7 @@ var defaultServiceEntries = map[string]*icapi.ServiceEntry{
 	defaultHost: {
 		v1.TypeMeta{},
 		v1.ObjectMeta{
-			Name: infer.ServiceEntryName(defaultHost),
+			Name: infer.ServiceEntryName("cloud-map", defaultHost),
 		},
 		v1alpha3.ServiceEntry{
 			Hosts: []string{defaultHost},

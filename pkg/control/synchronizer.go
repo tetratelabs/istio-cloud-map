@@ -16,20 +16,23 @@ import (
 )
 
 type synchronizer struct {
-	owner        v1.OwnerReference
-	serviceEntry serviceentry.Store
-	store        provider.Store
-	client       icapi.ServiceEntryInterface
-	interval     time.Duration
+	owner              v1.OwnerReference
+	serviceEntry       serviceentry.Store
+	store              provider.Store
+	serviceEntryPrefix string
+	client             icapi.ServiceEntryInterface
+	interval           time.Duration
 }
 
-func NewSynchronizer(owner v1.OwnerReference, serviceEntry serviceentry.Store, store provider.Store, client icapi.ServiceEntryInterface) *synchronizer {
+func NewSynchronizer(owner v1.OwnerReference,
+	serviceEntry serviceentry.Store, store provider.Store, serviceEntryPrefix string, client icapi.ServiceEntryInterface) *synchronizer {
 	return &synchronizer{
-		owner:        owner,
-		serviceEntry: serviceEntry,
-		store:        store,
-		client:       client,
-		interval:     time.Second * 5,
+		owner:              owner,
+		serviceEntry:       serviceEntry,
+		store:              store,
+		serviceEntryPrefix: serviceEntryPrefix,
+		client:             client,
+		interval:           time.Second * 5,
 	}
 }
 
@@ -62,14 +65,15 @@ func (s *synchronizer) sync() {
 }
 
 func (s *synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.ServiceEntry_Endpoint) {
-	newServiceEntry := infer.ServiceEntry(s.owner, host, endpoints)
+	newServiceEntry := infer.ServiceEntry(s.owner, s.serviceEntryPrefix, host, endpoints)
+	name := infer.ServiceEntryName(s.serviceEntryPrefix, host)
 	if _, ok := s.serviceEntry.Ours()[host]; ok {
 		// If we have already created an identical service entry, return.
 		if reflect.DeepEqual(s.serviceEntry.Ours()[host].Spec.Endpoints, endpoints) {
 			return
 		}
 		// Otherwise, endpoints have changed so update existing Service Entry
-		n := infer.ServiceEntryName(host)
+		n := infer.ServiceEntryName(s.serviceEntryPrefix, host)
 		oldServiceEntry, err := s.client.Get(n, v1.GetOptions{})
 		if err != nil {
 			log.Errorf("failed to get existing service entry %q for host %q", n, host)
@@ -78,18 +82,18 @@ func (s *synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.Service
 		newServiceEntry.ResourceVersion = oldServiceEntry.ResourceVersion
 		rv, err := s.client.Update(newServiceEntry)
 		if err != nil {
-			log.Errorf("error updating Service Entry %q: %v", infer.ServiceEntryName(host), err)
+			log.Errorf("error updating Service Entry %q: %v", name, err)
 			return
 		}
-		log.Infof("updated Service Entry %q, ResourceVersion is now %q", infer.ServiceEntryName(host), rv.ResourceVersion)
+		log.Infof("updated Service Entry %q, ResourceVersion is now %q", name, rv.ResourceVersion)
 		return
 	}
 	// Otherwise, create a new Service Entry
 	rv, err := s.client.Create(newServiceEntry)
 	if err != nil {
-		log.Errorf("error creating Service Entry %q: %v\n%v", infer.ServiceEntryName(host), err, newServiceEntry)
+		log.Errorf("error creating Service Entry %q: %v\n%v", name, err, newServiceEntry)
 	}
-	log.Infof("created Service Entry %q, ResourceVersion is %q", infer.ServiceEntryName(host), rv.ResourceVersion)
+	log.Infof("created Service Entry %q, ResourceVersion is %q", name, rv.ResourceVersion)
 }
 
 func (s *synchronizer) garbageCollect() {
@@ -98,10 +102,11 @@ func (s *synchronizer) garbageCollect() {
 		if _, ok := s.store.Hosts()[host]; !ok {
 			// TODO: namespaces!
 			// TODO: Don't attempt to delete no owners
-			if err := s.client.Delete(infer.ServiceEntryName(host), &v1.DeleteOptions{}); err != nil {
-				log.Errorf("error deleting Service Entry %q: %v", infer.ServiceEntryName(host), err)
+			name := infer.ServiceEntryName(s.serviceEntryPrefix, host)
+			if err := s.client.Delete(name, &v1.DeleteOptions{}); err != nil {
+				log.Errorf("error deleting Service Entry %q: %v", name, err)
 			}
-			log.Infof("successfully deleted Service Entry %q", infer.ServiceEntryName(host))
+			log.Infof("successfully deleted Service Entry %q", name)
 		}
 	}
 }

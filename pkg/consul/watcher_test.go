@@ -9,10 +9,13 @@ import (
 	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
 )
 
+var testClient *api.Client
+
 func TestWatcher(t *testing.T) {
+	var err error
 	conf := api.DefaultConfig()
 	conf.WaitTime = time.Second
-	client, err := api.NewClient(conf)
+	testClient, err = api.NewClient(conf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,23 +23,24 @@ func TestWatcher(t *testing.T) {
 	// In order to have empty Consul for each test,
 	// we sequentially execute tests.
 	t.Run("listServices", func(t *testing.T) {
-		testListServices(t, client)
-		checkConsulEmpty(t, client)
+		testListServices(t)
+		checkConsulEmpty(t)
 	})
 
 	t.Run("describeService", func(t *testing.T) {
-		testDescribeService(t, client)
-		checkConsulEmpty(t, client)
+		testDescribeService(t)
+		checkConsulEmpty(t)
 	})
 
 	t.Run("refreshStore", func(t *testing.T) {
-		testRefreshStore(t, client)
-		checkConsulEmpty(t, client)
+		testRefreshStore(t)
+		checkConsulEmpty(t)
 	})
 }
 
-func checkConsulEmpty(t *testing.T, client *api.Client) {
-	w := NewWatcher(provider.NewStore(), client).(*watcher)
+func checkConsulEmpty(t *testing.T) {
+	w := &watcher{client: testClient, store: provider.NewStore(), tickInterval: time.Second * 10}
+
 	if n, err := w.listServices(); err != nil {
 		t.Fatalf("listServices failed: %v", err)
 	} else if len(n) != 1 {
@@ -44,7 +48,7 @@ func checkConsulEmpty(t *testing.T, client *api.Client) {
 	}
 }
 
-func testRefreshStore(t *testing.T, client *api.Client) {
+func testRefreshStore(t *testing.T) {
 	tests := []struct {
 		name     string
 		services map[string][]*api.CatalogRegistration
@@ -109,7 +113,7 @@ func testRefreshStore(t *testing.T, client *api.Client) {
 		t.Run(tt.name, func(t *testing.T) {
 			for _, eps := range tt.services {
 				for _, ep := range eps {
-					_, err := client.Catalog().Register(ep, nil)
+					_, err := testClient.Catalog().Register(ep, nil)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -120,7 +124,7 @@ func testRefreshStore(t *testing.T, client *api.Client) {
 				// clean up
 				for _, eps := range tt.services {
 					for _, ep := range eps {
-						if _, err := client.Catalog().Deregister(&api.CatalogDeregistration{
+						if _, err := testClient.Catalog().Deregister(&api.CatalogDeregistration{
 							Node:      ep.Node,
 							Address:   ep.Address,
 							ServiceID: ep.Service.ID,
@@ -131,7 +135,7 @@ func testRefreshStore(t *testing.T, client *api.Client) {
 				}
 			}()
 
-			w := NewWatcher(provider.NewStore(), client).(*watcher)
+			w := &watcher{client: testClient, store: provider.NewStore(), tickInterval: time.Second * 10}
 			w.refreshStore()
 
 			actual := w.store.Hosts()
@@ -169,7 +173,7 @@ func testRefreshStore(t *testing.T, client *api.Client) {
 	}
 }
 
-func testDescribeService(t *testing.T, client *api.Client) {
+func testDescribeService(t *testing.T) {
 	tests := []struct {
 		name string
 		sc   *api.CatalogRegistration
@@ -193,13 +197,13 @@ func testDescribeService(t *testing.T, client *api.Client) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.sc.Service.Service != "" {
-				_, err := client.Catalog().Register(tt.sc, nil)
+				_, err := testClient.Catalog().Register(tt.sc, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
 				defer func() {
 					// clean up
-					if _, err := client.Catalog().Deregister(&api.CatalogDeregistration{
+					if _, err := testClient.Catalog().Deregister(&api.CatalogDeregistration{
 						Node:      tt.sc.Node,
 						Address:   tt.sc.Address,
 						ServiceID: tt.sc.Service.ID,
@@ -209,7 +213,7 @@ func testDescribeService(t *testing.T, client *api.Client) {
 				}()
 			}
 
-			w := NewWatcher(provider.NewStore(), client).(*watcher)
+			w := &watcher{client: testClient, store: provider.NewStore(), tickInterval: time.Second * 10}
 			ret, err := w.describeService(tt.sc.Service.Service)
 			if tt.sc.Service.Service != "" {
 				if err != nil {
@@ -230,7 +234,7 @@ func testDescribeService(t *testing.T, client *api.Client) {
 	}
 }
 
-func testListServices(t *testing.T, client *api.Client) {
+func testListServices(t *testing.T) {
 	tests := []struct {
 		name     string
 		services []*api.AgentServiceRegistration
@@ -247,7 +251,7 @@ func testListServices(t *testing.T, client *api.Client) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for _, c := range tt.services {
-				err := client.Agent().ServiceRegister(c)
+				err := testClient.Agent().ServiceRegister(c)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -255,13 +259,13 @@ func testListServices(t *testing.T, client *api.Client) {
 			defer func() {
 				// clean up
 				for _, s := range tt.services {
-					if err := client.Agent().ServiceDeregister(s.ID); err != nil {
+					if err := testClient.Agent().ServiceDeregister(s.ID); err != nil {
 						t.Fatalf("failed to clean up service %s: %v", s.ID, err)
 					}
 				}
 			}()
 
-			w := NewWatcher(provider.NewStore(), client).(*watcher)
+			w := &watcher{client: testClient, store: provider.NewStore(), tickInterval: time.Second * 10}
 			actual, err := w.listServices()
 			if err != nil {
 				t.Fatal(err)
@@ -280,18 +284,18 @@ func testListServices(t *testing.T, client *api.Client) {
 
 	t.Run("timeout", func(t *testing.T) {
 		s := tests[1].services[0]
-		err := client.Agent().ServiceRegister(s)
+		err := testClient.Agent().ServiceRegister(s)
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer func() {
 			// clean up
-			if err := client.Agent().ServiceDeregister(s.ID); err != nil {
+			if err := testClient.Agent().ServiceDeregister(s.ID); err != nil {
 				t.Fatalf("failed to clean up service %s: %v", s.ID, err)
 			}
 		}()
 
-		w := NewWatcher(provider.NewStore(), client).(*watcher)
+		w := &watcher{client: testClient, store: provider.NewStore(), tickInterval: time.Second * 10}
 		_, err = w.listServices()
 		if err != nil {
 			t.Fatal(err)

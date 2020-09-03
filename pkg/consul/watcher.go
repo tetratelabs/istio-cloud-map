@@ -2,6 +2,7 @@ package consul
 
 import (
 	"context"
+	"net/url"
 	"time"
 
 	"github.com/hashicorp/consul/api"
@@ -24,8 +25,33 @@ type watcher struct {
 
 var _ provider.Watcher = &watcher{}
 
-func NewWatcher(store provider.Store, client *api.Client) provider.Watcher {
-	return &watcher{client: client, store: store, tickInterval: time.Second * 10}
+func NewWatcher(store provider.Store, endpoint string) (provider.Watcher, error) {
+	// TODO: allow users to specify TOKEN
+	if len(endpoint) == 0 {
+		return nil, errors.New("Consul endpoint not specified")
+	}
+
+	config := api.DefaultConfig()
+	url, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing endpoint")
+	}
+	config.Scheme = url.Scheme
+	config.Address = url.Host
+
+	client, err := api.NewClient(config)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating client")
+	}
+	return &watcher{client: client, store: store, tickInterval: time.Second * 10}, nil
+}
+
+func (w *watcher) Store() provider.Store {
+	return w.store
+}
+
+func (w *watcher) Prefix() string {
+	return "consul-"
 }
 
 // Run the watcher until the context is cancelled
