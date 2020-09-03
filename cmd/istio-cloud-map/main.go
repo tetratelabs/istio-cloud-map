@@ -17,16 +17,12 @@ package main
 import (
 	"context"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
 	ic "istio.io/client-go/pkg/clientset/versioned"
 	icinformer "istio.io/client-go/pkg/informers/externalversions/networking/v1alpha3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,6 +32,9 @@ import (
 
 	"github.com/tetratelabs/istio-cloud-map/pkg/cloudmap"
 	"github.com/tetratelabs/istio-cloud-map/pkg/control"
+	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
+	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
+	"github.com/tetratelabs/log"
 )
 
 const (
@@ -101,7 +100,7 @@ func serve() (serve *cobra.Command) {
 			}
 
 			store := provider.NewStore()
-			log.Printf("Starting Cloud Map watcher in %q", awsRegion)
+			log.Infof("Starting Cloud Map watcher in %q", awsRegion)
 			cmWatcher, err := cloudmap.NewWatcher(store, awsRegion, awsID, awsSecret)
 			if err != nil {
 				return err
@@ -110,9 +109,9 @@ func serve() (serve *cobra.Command) {
 
 			istio := serviceentry.New(owner)
 			if debug {
-				istio = serviceentry.NewLoggingStore(istio, log.Printf)
+				istio = serviceentry.NewLoggingStore(istio, log.Infof)
 			}
-			log.Print("Starting Synchronizer control loop")
+			log.Info("Starting Synchronizer control loop")
 
 			// we get the service entry for namespace `namespace` for the synchronizer to publish service entries in to
 			// (if we use an `allNamespaces` client here we can't publish). Listening for ServiceEntries is done with
@@ -125,7 +124,7 @@ func serve() (serve *cobra.Command) {
 				// taken from https://github.com/istio/istio/blob/release-1.5/pilot/pkg/bootstrap/namespacecontroller.go
 				cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 			serviceentry.AttachHandler(istio, informer)
-			log.Printf("Watching %s.%s across all namespaces with resync period %d and id %q", apiType, kind, resyncPeriod, id)
+			log.Infof("Watching %s.%s across all namespaces with resync period %d and id %q", apiType, kind, resyncPeriod, id)
 			informer.Run(ctx.Done())
 			return nil
 		},
@@ -158,30 +157,31 @@ func main() {
 	// TODO: add other commands for listing services under management, etc.
 	root.AddCommand(serve())
 	if err := root.Execute(); err != nil {
-		log.Fatal(err)
+		log.Error(err.Error())
+		os.Exit(1)
 	}
 }
 
 func findNamespace(namespace string) string {
 	if len(namespace) > 0 {
-		log.Printf("using namespace flag to publish service entries into %q", namespace)
+		log.Infof("using namespace flag to publish service entries into %q", namespace)
 		return namespace
 	}
 	// This way assumes you've set the POD_NAMESPACE environment variable using the downward API.
 	// This check has to be done first for backwards compatibility with the way InClusterConfig was originally set up
 	if ns, ok := os.LookupEnv("POD_NAMESPACE"); ok {
-		log.Printf("using POD_NAMESPACE environment variable to publish service entries into %q", namespace)
+		log.Infof("using POD_NAMESPACE environment variable to publish service entries into %q", namespace)
 		return ns
 	}
 
 	// Fall back to the namespace associated with the service account token, if available
 	if data, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
 		if ns := strings.TrimSpace(string(data)); len(ns) > 0 {
-			log.Printf("using service account namespace from pod filesystem to publish service entries into %q", namespace)
+			log.Infof("using service account namespace from pod filesystem to publish service entries into %q", namespace)
 			return ns
 		}
 	}
 
-	log.Printf("couldn't determine a namespace, falling back to %q", "default")
+	log.Infof("couldn't determine a namespace, falling back to %q", "default")
 	return "default"
 }

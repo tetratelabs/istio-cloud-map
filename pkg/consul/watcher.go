@@ -2,15 +2,15 @@ package consul
 
 import (
 	"context"
-	"log"
 	"time"
-
-	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
-	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
 
 	"github.com/hashicorp/consul/api"
 	"github.com/pkg/errors"
 	"istio.io/api/networking/v1alpha3"
+
+	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
+	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
+	"github.com/tetratelabs/log"
 )
 
 var errIndexChangeTimeout = errors.New("blocking request timeout while waiting for index to change")
@@ -47,10 +47,10 @@ func (w *watcher) Run(ctx context.Context) {
 func (w *watcher) refreshStore() {
 	names, err := w.listServices()
 	if err == errIndexChangeTimeout {
-		log.Printf("waiting for index to change: current index: %d", w.lastIndex)
+		log.Infof("waiting for index to change: current index: %d", w.lastIndex)
 		return
 	} else if err != nil {
-		log.Printf("error listing services from Consul: %v", err)
+		log.Errorf("error listing services from Consul: %v", err)
 		return
 	}
 
@@ -96,7 +96,7 @@ func (w *watcher) describeServices(names map[string][]string) map[string][]*api.
 	for name := range names { // ignore tags in value
 		svcs, err := w.describeService(name)
 		if err != nil {
-			log.Printf("error describing service catalog from Consul: %v ", err)
+			log.Errorf("error describing service catalog from Consul: %v ", err)
 			continue
 		}
 		ss[name] = svcs
@@ -116,7 +116,7 @@ func (w *watcher) describeService(name string) ([]*api.CatalogService, error) {
 func catalogServiceToEndpoints(c *api.CatalogService) *v1alpha3.ServiceEntry_Endpoint {
 	address := c.Address
 	if address == "" {
-		log.Printf("instance %s of %s.%v is of a type that is not currently supported",
+		log.Infof("instance %s of %s.%v is of a type that is not currently supported",
 			c.ServiceID, c.ServiceName, c.Namespace)
 		return nil
 	}
@@ -126,6 +126,6 @@ func catalogServiceToEndpoints(c *api.CatalogService) *v1alpha3.ServiceEntry_End
 		return infer.Endpoint(address, uint32(port))
 	}
 
-	log.Printf("no port found for address %v, assuming http (80) and https (443)", address)
+	log.Infof("no port found for address %v, assuming http (80) and https (443)", address)
 	return &v1alpha3.ServiceEntry_Endpoint{Address: address, Ports: map[string]uint32{"http": 80, "https": 443}}
 }

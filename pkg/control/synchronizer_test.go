@@ -3,14 +3,13 @@ package control
 import (
 	"testing"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
 	"istio.io/api/networking/v1alpha3"
 	icapi "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	ic "istio.io/client-go/pkg/clientset/versioned/typed/networking/v1alpha3"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tetratelabs/istio-cloud-map/pkg/control/mock"
+	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
 )
 
 var defaultHost = "tetrate.io"

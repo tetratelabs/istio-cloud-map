@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
-
 	"github.com/hashicorp/consul/api"
+
+	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
 )
 
 func TestWatcher(t *testing.T) {

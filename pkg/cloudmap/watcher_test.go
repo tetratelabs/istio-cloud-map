@@ -6,10 +6,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
-
 	"github.com/aws/aws-sdk-go/service/servicediscovery"
 	"istio.io/api/networking/v1alpha3"
+
+	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
 )
 
 type mockSDAPI struct {

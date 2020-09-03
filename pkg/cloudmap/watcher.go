@@ -3,12 +3,8 @@ package cloudmap
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
-
-	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
-	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -17,6 +13,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/servicediscovery/servicediscoveryiface"
 	"github.com/pkg/errors"
 	"istio.io/api/networking/v1alpha3"
+
+	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
+	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
+	"github.com/tetratelabs/log"
 )
 
 // consts aren't memory addressable in Go
@@ -71,11 +71,11 @@ func (w *watcher) Run(ctx context.Context) {
 }
 
 func (w *watcher) refreshStore() {
-	log.Print("Syncing Cloud Map store")
+	log.Info("Syncing Cloud Map store")
 	// TODO: allow users to specify namespaces to watch
 	nsResp, err := w.cloudmap.ListNamespaces(&servicediscovery.ListNamespacesInput{})
 	if err != nil {
-		log.Printf("error retrieving namespace list from Cloud Map: %v", err)
+		log.Errorf("error retrieving namespace list from Cloud Map: %v", err)
 		return
 	}
 	// We want to continue to use existing store on error
@@ -83,7 +83,7 @@ func (w *watcher) refreshStore() {
 	for _, ns := range nsResp.Namespaces {
 		hosts, err := w.hostsForNamespace(ns)
 		if err != nil {
-			log.Printf("unable to refresh Cloud Map cache due to error, using existing cache: %v", err)
+			log.Errorf("unable to refresh Cloud Map cache due to error, using existing cache: %v", err)
 			return
 		}
 		// Hosts are "svcName.nsName" so by definition can't be the same across namespaces or services
@@ -91,7 +91,7 @@ func (w *watcher) refreshStore() {
 			tempStore[host] = eps
 		}
 	}
-	log.Print("Cloud Map store sync successful")
+	log.Info("Cloud Map store sync successful")
 	w.store.Set(tempStore)
 }
 
@@ -115,7 +115,7 @@ func (w *watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("%v Endpoints found for %q", len(eps), host)
+		log.Infof("%v Endpoints found for %q", len(eps), host)
 		hosts[host] = eps
 	}
 	return hosts, nil
@@ -156,7 +156,7 @@ func instanceToEndpoint(instance *servicediscovery.HttpInstanceSummary) *v1alpha
 		address = *cname
 	}
 	if address == "" {
-		log.Printf("instance %v of %v.%v is of a type that is not currently supported", *instance.InstanceId, *instance.ServiceName, *instance.NamespaceName)
+		log.Infof("instance %v of %v.%v is of a type that is not currently supported", *instance.InstanceId, *instance.ServiceName, *instance.NamespaceName)
 		return nil
 	}
 	if port, ok := instance.Attributes["AWS_INSTANCE_PORT"]; ok {
@@ -164,8 +164,8 @@ func instanceToEndpoint(instance *servicediscovery.HttpInstanceSummary) *v1alpha
 		if err == nil {
 			return infer.Endpoint(address, uint32(p))
 		}
-		log.Printf("error converting Port string %v to int: %v", *port, err)
+		log.Errorf("error converting Port string %v to int: %v", *port, err)
 	}
-	log.Printf("no port found for address %v, assuming http (80) and https (443)", address)
+	log.Infof("no port found for address %v, assuming http (80) and https (443)", address)
 	return &v1alpha3.ServiceEntry_Endpoint{Address: address, Ports: map[string]uint32{"http": 80, "https": 443}}
 }

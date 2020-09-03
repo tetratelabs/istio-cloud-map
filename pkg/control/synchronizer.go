@@ -2,17 +2,17 @@ package control
 
 import (
 	"context"
-	"log"
 	"reflect"
 	"time"
 
-	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
-
-	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
-	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
 	"istio.io/api/networking/v1alpha3"
 	icapi "istio.io/client-go/pkg/clientset/versioned/typed/networking/v1alpha3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
+	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
+	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
+	"github.com/tetratelabs/log"
 )
 
 type synchronizer struct {
@@ -70,24 +70,24 @@ func (s *synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.Service
 		n := infer.ServiceEntryName(host)
 		oldServiceEntry, err := s.client.Get(n, v1.GetOptions{})
 		if err != nil {
-			log.Printf("failed to get existing service entry %q for host %q", n, host)
+			log.Errorf("failed to get existing service entry %q for host %q", n, host)
 			return
 		}
 		newServiceEntry.ResourceVersion = oldServiceEntry.ResourceVersion
 		rv, err := s.client.Update(newServiceEntry)
 		if err != nil {
-			log.Printf("error updating Service Entry %q: %v", infer.ServiceEntryName(host), err)
+			log.Errorf("error updating Service Entry %q: %v", infer.ServiceEntryName(host), err)
 			return
 		}
-		log.Printf("updated Service Entry %q, ResourceVersion is now %q", infer.ServiceEntryName(host), rv.ResourceVersion)
+		log.Infof("updated Service Entry %q, ResourceVersion is now %q", infer.ServiceEntryName(host), rv.ResourceVersion)
 		return
 	}
 	// Otherwise, create a new Service Entry
 	rv, err := s.client.Create(newServiceEntry)
 	if err != nil {
-		log.Printf("error creating Service Entry %q: %v\n%v", infer.ServiceEntryName(host), err, newServiceEntry)
+		log.Errorf("error creating Service Entry %q: %v\n%v", infer.ServiceEntryName(host), err, newServiceEntry)
 	}
-	log.Printf("created Service Entry %q, ResourceVersion is %q", infer.ServiceEntryName(host), rv.ResourceVersion)
+	log.Infof("created Service Entry %q, ResourceVersion is %q", infer.ServiceEntryName(host), rv.ResourceVersion)
 }
 
 func (s *synchronizer) garbageCollect() {
@@ -97,9 +97,9 @@ func (s *synchronizer) garbageCollect() {
 			// TODO: namespaces!
 			// TODO: Don't attempt to delete no owners
 			if err := s.client.Delete(infer.ServiceEntryName(host), &v1.DeleteOptions{}); err != nil {
-				log.Printf("error deleting Service Entry %q: %v", infer.ServiceEntryName(host), err)
+				log.Errorf("error deleting Service Entry %q: %v", infer.ServiceEntryName(host), err)
 			}
-			log.Printf("successfully deleted Service Entry %q", infer.ServiceEntryName(host))
+			log.Infof("successfully deleted Service Entry %q", infer.ServiceEntryName(host))
 		}
 	}
 }
