@@ -17,7 +17,7 @@ spec:
       serviceAccountName: istio-cloud-map-service-account
       containers:
       - name: istio-cloud-map-server
-        image: gcr.io/tetratelabs/istio-cloud-map:v0.1
+        image: gcr.io/tetratelabs/istio-cloud-map:v0.2
         imagePullPolicy: Always
         args:
         - serve
