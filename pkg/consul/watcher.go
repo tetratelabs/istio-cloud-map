@@ -24,6 +24,12 @@ type watcher struct {
 	namespace    string
 }
 
+const (
+	// TODO: allow users to specify these
+	defaultBlockingRequestWaitTimeDuration = 5 * time.Second
+	defaultTickIntervalDuration            = 10 * time.Second
+)
+
 var _ provider.Watcher = &watcher{}
 
 func NewWatcher(store provider.Store, endpoint string, namespace string) (provider.Watcher, error) {
@@ -32,16 +38,15 @@ func NewWatcher(store provider.Store, endpoint string, namespace string) (provid
 	}
 
 	config := api.DefaultConfig()
-	url, err := url.Parse(endpoint)
+	u, err := url.Parse(endpoint)
 	if err != nil {
-		return nil, errors.Wrap(err, "error parsing endpoint")
+		return nil, errors.Wrapf(err, "error parsing endpoint: %s", endpoint)
 	}
 
 	// TODO: allow users to specify TOKEN
-	// TODO: Since namespace feature is only available in Enterprise (+1.7.0), we haven't tested yet
-	config.Scheme = url.Scheme
-	config.Address = url.Host
-	config.WaitTime = 5 * time.Second
+	config.Scheme = u.Scheme
+	config.Address = u.Host
+	config.WaitTime = defaultBlockingRequestWaitTimeDuration
 
 	client, err := api.NewClient(config)
 	if err != nil {
@@ -49,8 +54,9 @@ func NewWatcher(store provider.Store, endpoint string, namespace string) (provid
 	}
 	return &watcher{client: client,
 		store:        store,
-		tickInterval: time.Second * 10,
-		namespace:    namespace,
+		tickInterval: defaultTickIntervalDuration,
+		// TODO: Since namespace feature is only available in Enterprise (+1.7.0), we haven't tested yet
+		namespace: namespace,
 	}, nil
 }
 

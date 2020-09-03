@@ -60,7 +60,7 @@ func testRefreshStore(t *testing.T) {
 					{
 						ID:      "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
 						Node:    "node1",
-						Address: "1.1.1.1",
+						Address: "192.0.2.20",
 						Service: &api.AgentService{
 							Service: "service1",
 							Port:    8080,
@@ -77,7 +77,7 @@ func testRefreshStore(t *testing.T) {
 					{
 						ID:      "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
 						Node:    "node1",
-						Address: "1.1.1.1",
+						Address: "192.0.2.1",
 						Service: &api.AgentService{
 							Service: "service1",
 							Port:    8080,
@@ -87,7 +87,7 @@ func testRefreshStore(t *testing.T) {
 					{
 						ID:      "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
 						Node:    "node2",
-						Address: "2.2.2.2",
+						Address: "192.0.2.2",
 						Service: &api.AgentService{
 							Service: "service1",
 							Port:    8080,
@@ -98,7 +98,7 @@ func testRefreshStore(t *testing.T) {
 				"service2": {{
 					ID:      "caaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
 					Node:    "node3",
-					Address: "3.3.3.3",
+					Address: "192.0.2.3",
 					Service: &api.AgentService{
 						Service: "service2",
 						Port:    8080,
@@ -183,7 +183,7 @@ func testDescribeService(t *testing.T) {
 			sc: &api.CatalogRegistration{
 				ID:      "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
 				Node:    "node",
-				Address: "1.1.1.1",
+				Address: "192.0.2.1",
 				Service: &api.AgentService{
 					Service: "service1",
 					Port:    8080,
@@ -319,7 +319,7 @@ func TestCatalogServiceToEndpoints(t *testing.T) {
 	}
 
 	// empty port
-	in := &api.CatalogService{Address: "1.2.3.4"}
+	in := &api.CatalogService{Address: "192.0.2.4"}
 	res = catalogServiceToEndpoints(in)
 	if res.Address != in.Address {
 		t.Errorf("address must be %s but got %s", in.Address, res.Address)
@@ -332,7 +332,7 @@ func TestCatalogServiceToEndpoints(t *testing.T) {
 	}
 
 	// address and ports are provided
-	in = &api.CatalogService{Address: "1.2.3.4", ServicePort: 8080}
+	in = &api.CatalogService{Address: "192.0.2.10", ServicePort: 8080}
 	res = catalogServiceToEndpoints(in)
 	if res.Address != in.Address {
 		t.Errorf("address must be %s but got %s", in.Address, res.Address)
