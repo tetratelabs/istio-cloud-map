@@ -2,6 +2,7 @@ package consul
 
 import (
 	"testing"
+	"time"
 
 	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
 
@@ -9,7 +10,9 @@ import (
 )
 
 func TestWatcher(t *testing.T) {
-	client, err := api.NewClient(api.DefaultConfig())
+	conf := api.DefaultConfig()
+	conf.WaitTime = time.Second
+	client, err := api.NewClient(conf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,6 +159,12 @@ func testRefreshStore(t *testing.T, client *api.Client) {
 					}
 				}
 			}
+
+			prevIndex := w.lastIndex
+			w.refreshStore() // supposed to immediately return since the index not change
+			if prevIndex != w.lastIndex {
+				t.Fatalf("indexes must not change but have %d != %d", prevIndex, w.lastIndex)
+			}
 		})
 	}
 }
@@ -269,6 +278,33 @@ func testListServices(t *testing.T, client *api.Client) {
 		})
 	}
 
+	t.Run("timeout", func(t *testing.T) {
+		s := tests[1].services[0]
+		err := client.Agent().ServiceRegister(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			// clean up
+			if err := client.Agent().ServiceDeregister(s.ID); err != nil {
+				t.Fatalf("failed to clean up service %s: %v", s.ID, err)
+			}
+		}()
+
+		w := NewWatcher(provider.NewStore(), client).(*watcher)
+		_, err = w.listServices()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = w.listServices()
+		if err != errIndexChangeTimeout {
+			t.Fatalf(
+				"`%v` must be returned but got `%v`",
+				errIndexChangeTimeout, err,
+			)
+		}
+	})
 }
 
 func TestCatalogServiceToEndpoints(t *testing.T) {

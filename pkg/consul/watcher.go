@@ -13,25 +13,26 @@ import (
 	"istio.io/api/networking/v1alpha3"
 )
 
+var errIndexChangeTimeout = errors.New("blocking request timeout while waiting for index to change")
+
 type watcher struct {
-	client   *api.Client
-	store    provider.Store
-	interval time.Duration
+	client       *api.Client
+	store        provider.Store
+	tickInterval time.Duration
+	lastIndex    uint64 // lastly synced index of Catalog
 }
 
 var _ provider.Watcher = &watcher{}
 
 func NewWatcher(store provider.Store, client *api.Client) provider.Watcher {
-	return &watcher{client: client, store: store, interval: time.Second * 5}
+	return &watcher{client: client, store: store, tickInterval: time.Second * 10}
 }
 
 // Run the watcher until the context is cancelled
 func (w *watcher) Run(ctx context.Context) {
-	tick := time.NewTicker(w.interval).C
+	tick := time.NewTicker(w.tickInterval).C
 
 	w.refreshStore() // init
-
-	// TODO: cache checks
 	for {
 		select {
 		case <-tick:
@@ -45,7 +46,10 @@ func (w *watcher) Run(ctx context.Context) {
 // fetch services and endpoints from consul catalog and sync them with Store
 func (w *watcher) refreshStore() {
 	names, err := w.listServices()
-	if err != nil {
+	if err == errIndexChangeTimeout {
+		log.Printf("waiting for index to change: current index: %d", w.lastIndex)
+		return
+	} else if err != nil {
 		log.Printf("error listing services from Consul: %v", err)
 		return
 	}
@@ -70,10 +74,19 @@ func (w *watcher) refreshStore() {
 // listServices lists services
 func (w *watcher) listServices() (map[string][]string, error) {
 	// TODO: support Namespace? Namespaces are available only in Consul Enterprise(+1.7.0)
-	data, _, err := w.client.Catalog().Services(nil)
+	data, metadata, err := w.client.Catalog().Services(
+		&api.QueryOptions{WaitIndex: w.lastIndex},
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list services")
 	}
+
+	if w.lastIndex == metadata.LastIndex {
+		// this case indicates the request reaches timeout of blocking request
+		return nil, errIndexChangeTimeout
+	}
+
+	w.lastIndex = metadata.LastIndex
 	return data, nil
 }
 
