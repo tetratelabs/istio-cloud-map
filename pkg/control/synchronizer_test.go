@@ -3,14 +3,13 @@ package control
 import (
 	"testing"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
 	"istio.io/api/networking/v1alpha3"
 	icapi "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	ic "istio.io/client-go/pkg/clientset/versioned/typed/networking/v1alpha3"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tetratelabs/istio-cloud-map/pkg/control/mock"
+	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
 )
 
 var defaultHost = "tetrate.io"
@@ -30,7 +29,7 @@ var defaultServiceEntries = map[string]*icapi.ServiceEntry{
 	defaultHost: {
 		v1.TypeMeta{},
 		v1.ObjectMeta{
-			Name: infer.ServiceEntryName(defaultHost),
+			Name: infer.ServiceEntryName("cloud-map", defaultHost),
 		},
 		v1alpha3.ServiceEntry{
 			Hosts: []string{defaultHost},
@@ -70,7 +69,7 @@ func TestSynchronizer_garbageCollect(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &synchronizer{
-				cloudMap:     &mock.CMStore{Result: tt.cloudMapHosts},
+				store:        &mock.Store{Result: tt.cloudMapHosts},
 				serviceEntry: &mock.SEStore{Result: tt.serviceEntries},
 				client:       &mockIstio{store: make(map[string]*icapi.ServiceEntry)},
 			}
@@ -137,7 +136,7 @@ func TestSynchronizer_createOrUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &synchronizer{
-				cloudMap:     &mock.CMStore{Result: tt.cloudMapHosts},
+				store:        &mock.Store{Result: tt.cloudMapHosts},
 				serviceEntry: &mock.SEStore{Result: tt.serviceEntries},
 				client:       &mockIstio{store: make(map[string]*icapi.ServiceEntry)},
 			}

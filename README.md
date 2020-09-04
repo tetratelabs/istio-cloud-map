@@ -131,3 +131,11 @@ go build -o istio-cloud-map github.com/tetratelabs/istio-cloud-map/cmd/istio-clo
 ```
 
 In particular the controller needs its `--kube-config` flag set to talk to the remote API server. If no flag is set, the controller assumes it is deployed into a Kubernetes cluster and attempts to contact the API server directly. Similarly, we need AWS credentials; if the flags aren't set we search the `AWS_SECRET_ACCESS_KEY`, `AWS_ACCESS_KEY_ID`, and `AWS_REGION` environment variables.
+
+
+To run go tests locally:
+```bash
+docker run -d -p 8500:8500 consul:1.8.3 # setup local consul for testing pkg/consul
+
+go test ./... -v -race
+```

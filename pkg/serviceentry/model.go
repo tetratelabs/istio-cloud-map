@@ -15,13 +15,14 @@
 package serviceentry
 
 import (
-	"log"
 	"reflect"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/tetratelabs/log"
 )
 
 type (
@@ -118,7 +119,7 @@ func (s *store) Insert(se *v1alpha3.ServiceEntry) error {
 
 func (s *store) Update(old, se *v1alpha3.ServiceEntry) error {
 	if proto.Equal(&old.Spec, &se.Spec) {
-		log.Printf("skipping update, no change")
+		log.Infof("skipping update, no change")
 		return nil
 	}
 

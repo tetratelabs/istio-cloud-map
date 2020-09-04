@@ -3,20 +3,21 @@ package cloudmap
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
 	"strconv"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/pkg/errors"
-	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
-
-	"istio.io/api/networking/v1alpha3"
-
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/servicediscovery"
 	"github.com/aws/aws-sdk-go/service/servicediscovery/servicediscoveryiface"
+	"github.com/pkg/errors"
+	"istio.io/api/networking/v1alpha3"
+
+	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
+	"github.com/tetratelabs/istio-cloud-map/pkg/provider"
+	"github.com/tetratelabs/log"
 )
 
 // consts aren't memory addressable in Go
@@ -28,7 +29,14 @@ var filterConditionEquals = servicediscovery.FilterConditionEq
 const emptyToken = ""
 
 // NewWatcher returns a Cloud Map watcher
-func NewWatcher(store Store, region, id, secret string) (*Watcher, error) {
+func NewWatcher(store provider.Store, region, id, secret string) (provider.Watcher, error) {
+	if len(region) == 0 {
+		var ok bool
+		if region, ok = os.LookupEnv("AWS_REGION"); !ok {
+			return nil, errors.New("AWS region must be specified")
+		}
+	}
+
 	var creds *credentials.Credentials
 	if len(id) == 0 || len(secret) == 0 {
 		creds = credentials.NewEnvCredentials()
@@ -43,24 +51,36 @@ func NewWatcher(store Store, region, id, secret string) (*Watcher, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error setting up AWS session")
 	}
-	return &Watcher{cloudmap: servicediscovery.New(session), store: store, interval: time.Second * 5}, nil
+	return &watcher{cloudmap: servicediscovery.New(session), store: store, interval: time.Second * 5}, nil
 }
 
-// Watcher polls Cloud Map and caches a list of services and their instances
-type Watcher struct {
+// watcher polls Cloud Map and caches a list of services and their instances
+type watcher struct {
 	cloudmap servicediscoveryiface.ServiceDiscoveryAPI
-	store    Store
+	store    provider.Store
 	interval time.Duration
 }
 
+var _ provider.Watcher = &watcher{}
+
+func (w *watcher) Store() provider.Store {
+	return w.store
+}
+
+func (w *watcher) Prefix() string {
+	return "cloudmap-"
+}
+
 // Run the watcher until the context is cancelled
-func (w *Watcher) Run(ctx context.Context) {
-	tick := time.NewTicker(w.interval).C
+func (w *watcher) Run(ctx context.Context) {
+	ticker := time.NewTicker(w.interval)
+	defer ticker.Stop()
+
 	// Initial sync on startup
 	w.refreshStore()
 	for {
 		select {
-		case <-tick:
+		case <-ticker.C:
 			w.refreshStore()
 		case <-ctx.Done():
 			return
@@ -68,12 +88,12 @@ func (w *Watcher) Run(ctx context.Context) {
 	}
 }
 
-func (w *Watcher) refreshStore() {
-	log.Print("Syncing Cloud Map store")
+func (w *watcher) refreshStore() {
+	log.Info("Syncing Cloud Map store")
 	// TODO: allow users to specify namespaces to watch
 	nsResp, err := w.cloudmap.ListNamespaces(&servicediscovery.ListNamespacesInput{})
 	if err != nil {
-		log.Printf("error retrieving namespace list from Cloud Map: %v", err)
+		log.Errorf("error retrieving namespace list from Cloud Map: %v", err)
 		return
 	}
 	// We want to continue to use existing store on error
@@ -81,7 +101,7 @@ func (w *Watcher) refreshStore() {
 	for _, ns := range nsResp.Namespaces {
 		hosts, err := w.hostsForNamespace(ns)
 		if err != nil {
-			log.Printf("unable to refresh Cloud Map cache due to error, using existing cache: %v", err)
+			log.Errorf("unable to refresh Cloud Map cache due to error, using existing cache: %v", err)
 			return
 		}
 		// Hosts are "svcName.nsName" so by definition can't be the same across namespaces or services
@@ -89,11 +109,11 @@ func (w *Watcher) refreshStore() {
 			tempStore[host] = eps
 		}
 	}
-	log.Print("Cloud Map store sync successful")
-	w.store.(*store).set(tempStore)
+	log.Info("Cloud Map store sync successful")
+	w.store.Set(tempStore)
 }
 
-func (w *Watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[string][]*v1alpha3.ServiceEntry_Endpoint, error) {
+func (w *watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[string][]*v1alpha3.ServiceEntry_Endpoint, error) {
 	hosts := map[string][]*v1alpha3.ServiceEntry_Endpoint{}
 	svcResp, err := w.cloudmap.ListServices(&servicediscovery.ListServicesInput{
 		Filters: []*servicediscovery.ServiceFilter{
@@ -113,13 +133,13 @@ func (w *Watcher) hostsForNamespace(ns *servicediscovery.NamespaceSummary) (map[
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("%v Endpoints found for %q", len(eps), host)
+		log.Infof("%v Endpoints found for %q", len(eps), host)
 		hosts[host] = eps
 	}
 	return hosts, nil
 }
 
-func (w *Watcher) endpointsForService(svc *servicediscovery.ServiceSummary, ns *servicediscovery.NamespaceSummary) ([]*v1alpha3.ServiceEntry_Endpoint, error) {
+func (w *watcher) endpointsForService(svc *servicediscovery.ServiceSummary, ns *servicediscovery.NamespaceSummary) ([]*v1alpha3.ServiceEntry_Endpoint, error) {
 	// TODO: use health filter?
 	instOutput, err := w.cloudmap.DiscoverInstances(&servicediscovery.DiscoverInstancesInput{ServiceName: svc.Name, NamespaceName: ns.Name})
 	if err != nil {
@@ -136,7 +156,7 @@ func (w *Watcher) endpointsForService(svc *servicediscovery.ServiceSummary, ns *
 }
 
 func instancesToEndpoints(instances []*servicediscovery.HttpInstanceSummary) []*v1alpha3.ServiceEntry_Endpoint {
-	eps := []*v1alpha3.ServiceEntry_Endpoint{}
+	eps := make([]*v1alpha3.ServiceEntry_Endpoint, 0, len(instances))
 	for _, inst := range instances {
 		ep := instanceToEndpoint(inst)
 		if ep != nil {
@@ -154,7 +174,7 @@ func instanceToEndpoint(instance *servicediscovery.HttpInstanceSummary) *v1alpha
 		address = *cname
 	}
 	if address == "" {
-		log.Printf("instance %v of %v.%v is of a type that is not currently supported", *instance.InstanceId, *instance.ServiceName, *instance.NamespaceName)
+		log.Infof("instance %v of %v.%v is of a type that is not currently supported", *instance.InstanceId, *instance.ServiceName, *instance.NamespaceName)
 		return nil
 	}
 	if port, ok := instance.Attributes["AWS_INSTANCE_PORT"]; ok {
@@ -162,8 +182,8 @@ func instanceToEndpoint(instance *servicediscovery.HttpInstanceSummary) *v1alpha
 		if err == nil {
 			return infer.Endpoint(address, uint32(p))
 		}
-		log.Printf("error converting Port string %v to int: %v", *port, err)
+		log.Errorf("error converting Port string %v to int: %v", *port, err)
 	}
-	log.Printf("no port found for address %v, assuming http (80) and https (443)", address)
+	log.Infof("no port found for address %v, assuming http (80) and https (443)", address)
 	return &v1alpha3.ServiceEntry_Endpoint{Address: address, Ports: map[string]uint32{"http": 80, "https": 443}}
 }

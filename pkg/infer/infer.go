@@ -7,24 +7,25 @@ import (
 
 	"istio.io/api/networking/v1alpha3"
 	ic "istio.io/client-go/pkg/apis/networking/v1alpha3"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ServiceEntry infers an Istio service entry based on provided information
-func ServiceEntry(owner v1.OwnerReference, host string, endpoints []*v1alpha3.ServiceEntry_Endpoint) *ic.ServiceEntry {
+func ServiceEntry(owner v1.OwnerReference, prefix, host string, endpoints []*v1alpha3.ServiceEntry_Endpoint) *ic.ServiceEntry {
 	addresses := []string{}
 	if len(endpoints) > 0 {
 		if ip := net.ParseIP(endpoints[0].Address); ip != nil {
 			addresses = []string{endpoints[0].Address}
 		}
 	}
+
 	return &ic.ServiceEntry{
-		v1.TypeMeta{},
-		v1.ObjectMeta{
-			Name:            ServiceEntryName(host),
+		TypeMeta: v1.TypeMeta{},
+		ObjectMeta: v1.ObjectMeta{
+			Name:            ServiceEntryName(prefix, host),
 			OwnerReferences: []v1.OwnerReference{owner},
 		},
-		v1alpha3.ServiceEntry{
+		Spec: v1alpha3.ServiceEntry{
 			Hosts:     []string{host},
 			Addresses: addresses,
 			// assume external for now
@@ -92,6 +93,6 @@ func Resolution(endpoints []*v1alpha3.ServiceEntry_Endpoint) v1alpha3.ServiceEnt
 }
 
 // ServiceEntryName returns the service entry name based on the specificed host
-func ServiceEntryName(host string) string {
-	return fmt.Sprintf("cloudmap-%v", host)
+func ServiceEntryName(prefix, host string) string {
+	return fmt.Sprintf("%s%s", prefix, host)
 }

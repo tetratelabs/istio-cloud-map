@@ -2,7 +2,7 @@ package mock
 
 import (
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tetratelabs/istio-cloud-map/pkg/serviceentry"
 )
@@ -13,7 +13,7 @@ type SEStore struct {
 }
 
 // Classify is not implemented
-func (s *SEStore) Classify(host string) serviceentry.Owner {
+func (s *SEStore) Classify(_ string) serviceentry.Owner {
 	return 0
 }
 
@@ -28,11 +28,7 @@ func (s *SEStore) Theirs() map[string]*v1alpha3.ServiceEntry {
 }
 
 // Insert is not implemented
-func (s *SEStore) Insert(se *v1alpha3.ServiceEntry) error {
-	return nil
-}
-
-func (s *SEStore) Update(_, _ *v1alpha3.ServiceEntry) error {
+func (s *SEStore) Insert(_ *v1alpha3.ServiceEntry) error {
 	return nil
 }
 
