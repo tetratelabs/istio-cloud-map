@@ -8,28 +8,28 @@ import (
 	"istio.io/api/networking/v1alpha3"
 )
 
-var ipEndpoint = &v1alpha3.ServiceEntry_Endpoint{Address: "8.8.8.8"}
-var hostnameEndpoint = &v1alpha3.ServiceEntry_Endpoint{Address: "demo.tetrate.io"}
+var ipEndpoint = &v1alpha3.WorkloadEntry{Address: "8.8.8.8"}
+var hostnameEndpoint = &v1alpha3.WorkloadEntry{Address: "demo.tetrate.io"}
 
 func TestResolution(t *testing.T) {
 	tests := []struct {
 		name      string
-		endpoints []*v1alpha3.ServiceEntry_Endpoint
+		endpoints []*v1alpha3.WorkloadEntry
 		want      v1alpha3.ServiceEntry_Resolution
 	}{
 		{
 			name:      "hostname endpoints infer DNS",
-			endpoints: []*v1alpha3.ServiceEntry_Endpoint{hostnameEndpoint},
+			endpoints: []*v1alpha3.WorkloadEntry{hostnameEndpoint},
 			want:      v1alpha3.ServiceEntry_DNS,
 		},
 		{
 			name:      "IP only endpoints infer STATIC",
-			endpoints: []*v1alpha3.ServiceEntry_Endpoint{ipEndpoint},
+			endpoints: []*v1alpha3.WorkloadEntry{ipEndpoint},
 			want:      v1alpha3.ServiceEntry_STATIC,
 		},
 		{
 			name:      "Mixed endpoints infer DNS",
-			endpoints: []*v1alpha3.ServiceEntry_Endpoint{ipEndpoint, hostnameEndpoint},
+			endpoints: []*v1alpha3.WorkloadEntry{ipEndpoint, hostnameEndpoint},
 			want:      v1alpha3.ServiceEntry_DNS,
 		},
 		{
@@ -50,27 +50,27 @@ func TestResolution(t *testing.T) {
 func TestPorts(t *testing.T) {
 	tests := []struct {
 		name      string
-		endpoints []*v1alpha3.ServiceEntry_Endpoint
+		endpoints []*v1alpha3.WorkloadEntry
 		want      []*v1alpha3.Port
 	}{
 		{
 			name: "Two endpoints with different ports creates two ports",
-			endpoints: []*v1alpha3.ServiceEntry_Endpoint{
-				&v1alpha3.ServiceEntry_Endpoint{Address: "1.1.1.1", Ports: map[string]uint32{"http": 80}},
-				&v1alpha3.ServiceEntry_Endpoint{Address: "8.8.8.8", Ports: map[string]uint32{"https": 443}},
+			endpoints: []*v1alpha3.WorkloadEntry{
+				{Address: "1.1.1.1", Ports: map[string]uint32{"http": 80}},
+				{Address: "8.8.8.8", Ports: map[string]uint32{"https": 443}},
 			},
 			want: []*v1alpha3.Port{
-				&v1alpha3.Port{Number: 80, Name: "http", Protocol: "HTTP"},
-				&v1alpha3.Port{Number: 443, Name: "https", Protocol: "HTTPS"},
+				{Number: 80, Name: "http", Protocol: "HTTP"},
+				{Number: 443, Name: "https", Protocol: "HTTPS"},
 			},
 		},
 		{
 			name: "Two endpoints with the same port are de-duped",
-			endpoints: []*v1alpha3.ServiceEntry_Endpoint{
-				&v1alpha3.ServiceEntry_Endpoint{Address: "1.1.1.1", Ports: map[string]uint32{"http": 80}},
-				&v1alpha3.ServiceEntry_Endpoint{Address: "8.8.8.8", Ports: map[string]uint32{"http": 80}},
+			endpoints: []*v1alpha3.WorkloadEntry{
+				{Address: "1.1.1.1", Ports: map[string]uint32{"http": 80}},
+				{Address: "8.8.8.8", Ports: map[string]uint32{"http": 80}},
 			},
-			want: []*v1alpha3.Port{&v1alpha3.Port{Number: 80, Name: "http", Protocol: "HTTP"}},
+			want: []*v1alpha3.Port{{Number: 80, Name: "http", Protocol: "HTTP"}},
 		},
 	}
 	for _, tt := range tests {
@@ -87,13 +87,13 @@ func TestEndpoint(t *testing.T) {
 		name    string
 		address string
 		port    uint32
-		want    *v1alpha3.ServiceEntry_Endpoint
+		want    *v1alpha3.WorkloadEntry
 	}{
 		{
 			name:    "Generates a Service Entry endpoint from an address port pair",
 			address: "1.1.1.1",
 			port:    80,
-			want: &v1alpha3.ServiceEntry_Endpoint{
+			want: &v1alpha3.WorkloadEntry{
 				Address: "1.1.1.1",
 				Ports:   map[string]uint32{"http": 80},
 			},

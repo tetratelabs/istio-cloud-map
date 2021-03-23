@@ -37,3 +37,4 @@ docker-run: docker-build
 
 clean:
 	rm -f istio-cloud-map
+	go clean -testcache

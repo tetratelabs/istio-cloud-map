@@ -52,9 +52,9 @@ var ipv41, ipv42, subdomain, hostname, portStr, httpPortStr = "8.8.8.8", "9.9.9.
 var cname = fmt.Sprintf("%v.%v", subdomain, hostname)
 
 // golden path responses
-var inferedIPv41Endpoint = &v1alpha3.ServiceEntry_Endpoint{Address: ipv41, Ports: map[string]uint32{"http": 80, "https": 443}}
-var inferedIPv42Endpoint = &v1alpha3.ServiceEntry_Endpoint{Address: ipv42, Ports: map[string]uint32{"http": 80, "https": 443}}
-var inferedHostEndpoint = &v1alpha3.ServiceEntry_Endpoint{Address: cname, Ports: map[string]uint32{"http": 80, "https": 443}}
+var inferedIPv41Endpoint = &v1alpha3.WorkloadEntry{Address: ipv41, Ports: map[string]uint32{"http": 80, "https": 443}}
+var inferedIPv42Endpoint = &v1alpha3.WorkloadEntry{Address: ipv42, Ports: map[string]uint32{"http": 80, "https": 443}}
+var inferedHostEndpoint = &v1alpha3.WorkloadEntry{Address: cname, Ports: map[string]uint32{"http": 80, "https": 443}}
 
 var goldenPathListNamespaces = &servicediscovery.ListNamespacesOutput{
 	Namespaces: []*servicediscovery.NamespaceSummary{
@@ -81,25 +81,25 @@ func TestWatcher_refreshCache(t *testing.T) {
 		listSvcErr  error
 		discInstRes *servicediscovery.DiscoverInstancesOutput
 		discInstErr error
-		want        map[string][]*v1alpha3.ServiceEntry_Endpoint
+		want        map[string][]*v1alpha3.WorkloadEntry
 	}{
 		{
 			name:        "store gets updated",
 			listNsRes:   goldenPathListNamespaces,
 			listSvcRes:  goldenPathListServices,
 			discInstRes: goldenPathDiscoverInstances,
-			want:        map[string][]*v1alpha3.ServiceEntry_Endpoint{"demo.tetrate.io": []*v1alpha3.ServiceEntry_Endpoint{inferedIPv41Endpoint}},
+			want:        map[string][]*v1alpha3.WorkloadEntry{"demo.tetrate.io": []*v1alpha3.WorkloadEntry{inferedIPv41Endpoint}},
 		},
 		{
 			name:      "store unchanged on ListNamespace error",
 			listNsErr: errors.New("bang"),
-			want:      map[string][]*v1alpha3.ServiceEntry_Endpoint{},
+			want:      map[string][]*v1alpha3.WorkloadEntry{},
 		},
 		{
 			name:       "store unchanged on ListService error",
 			listNsRes:  goldenPathListNamespaces,
 			listSvcErr: errors.New("bang"),
-			want:       map[string][]*v1alpha3.ServiceEntry_Endpoint{},
+			want:       map[string][]*v1alpha3.WorkloadEntry{},
 		},
 	}
 	for _, tt := range tests {
@@ -121,7 +121,7 @@ func TestWatcher_refreshCache(t *testing.T) {
 func TestWatcher_hostsForNamespace(t *testing.T) {
 	tests := []struct {
 		name        string
-		want        map[string][]*v1alpha3.ServiceEntry_Endpoint
+		want        map[string][]*v1alpha3.WorkloadEntry
 		ns          *servicediscovery.NamespaceSummary
 		listSvcRes  *servicediscovery.ListServicesOutput
 		listSvcErr  error
@@ -134,7 +134,7 @@ func TestWatcher_hostsForNamespace(t *testing.T) {
 			ns:          &servicediscovery.NamespaceSummary{Id: &hostname, Name: &hostname},
 			listSvcRes:  goldenPathListServices,
 			discInstRes: goldenPathDiscoverInstances,
-			want:        map[string][]*v1alpha3.ServiceEntry_Endpoint{"demo.tetrate.io": []*v1alpha3.ServiceEntry_Endpoint{inferedIPv41Endpoint}},
+			want:        map[string][]*v1alpha3.WorkloadEntry{"demo.tetrate.io": []*v1alpha3.WorkloadEntry{inferedIPv41Endpoint}},
 		},
 		{
 			name:       "returns host with host as endpoint if host exists but has no Endpoints",
@@ -143,7 +143,7 @@ func TestWatcher_hostsForNamespace(t *testing.T) {
 			discInstRes: &servicediscovery.DiscoverInstancesOutput{
 				Instances: []*servicediscovery.HttpInstanceSummary{},
 			},
-			want: map[string][]*v1alpha3.ServiceEntry_Endpoint{"demo.tetrate.io": []*v1alpha3.ServiceEntry_Endpoint{inferedHostEndpoint}},
+			want: map[string][]*v1alpha3.WorkloadEntry{"demo.tetrate.io": []*v1alpha3.WorkloadEntry{inferedHostEndpoint}},
 		},
 		{
 			name:        "errors if DiscoverInstances errors",
@@ -185,7 +185,7 @@ func TestWatcher_EndpointsForService(t *testing.T) {
 		ns          *servicediscovery.NamespaceSummary
 		discInstRes *servicediscovery.DiscoverInstancesOutput
 		discInstErr error
-		want        []*v1alpha3.ServiceEntry_Endpoint
+		want        []*v1alpha3.WorkloadEntry
 		wantErr     bool
 	}{
 		{
@@ -193,14 +193,14 @@ func TestWatcher_EndpointsForService(t *testing.T) {
 			discInstRes: goldenPathDiscoverInstances,
 			svc:         &servicediscovery.ServiceSummary{Name: &subdomain},
 			ns:          &servicediscovery.NamespaceSummary{Name: &hostname},
-			want:        []*v1alpha3.ServiceEntry_Endpoint{inferedIPv41Endpoint},
+			want:        []*v1alpha3.WorkloadEntry{inferedIPv41Endpoint},
 		},
 		{
 			name:        "Returns Endpoints for service if zero instances",
 			discInstRes: &servicediscovery.DiscoverInstancesOutput{Instances: []*servicediscovery.HttpInstanceSummary{}},
 			svc:         &servicediscovery.ServiceSummary{Name: &subdomain},
 			ns:          &servicediscovery.NamespaceSummary{Name: &hostname},
-			want:        []*v1alpha3.ServiceEntry_Endpoint{inferedHostEndpoint},
+			want:        []*v1alpha3.WorkloadEntry{inferedHostEndpoint},
 		},
 		{
 			name:        "Errors if call to DiscoverInstances errors",
@@ -230,7 +230,7 @@ func Test_instancesToEndpoints(t *testing.T) {
 	tests := []struct {
 		name      string
 		instances []*servicediscovery.HttpInstanceSummary
-		want      []*v1alpha3.ServiceEntry_Endpoint
+		want      []*v1alpha3.WorkloadEntry
 	}{
 		{
 			name: "Handles multiple instances of the same type",
@@ -238,7 +238,7 @@ func Test_instancesToEndpoints(t *testing.T) {
 				&servicediscovery.HttpInstanceSummary{Attributes: map[string]*string{"AWS_INSTANCE_IPV4": &ipv41}},
 				&servicediscovery.HttpInstanceSummary{Attributes: map[string]*string{"AWS_INSTANCE_IPV4": &ipv42}},
 			},
-			want: []*v1alpha3.ServiceEntry_Endpoint{inferedIPv41Endpoint, inferedIPv42Endpoint},
+			want: []*v1alpha3.WorkloadEntry{inferedIPv41Endpoint, inferedIPv42Endpoint},
 		},
 		{
 			name: "Handles multiple instances of differing type",
@@ -249,7 +249,7 @@ func Test_instancesToEndpoints(t *testing.T) {
 					Attributes: map[string]*string{"AWS_ALIAS_DNS_NAME": &hostname},
 				},
 			},
-			want: []*v1alpha3.ServiceEntry_Endpoint{inferedIPv41Endpoint},
+			want: []*v1alpha3.WorkloadEntry{inferedIPv41Endpoint},
 		},
 		{
 			name: "handles empty instance attributes map",
@@ -259,17 +259,17 @@ func Test_instancesToEndpoints(t *testing.T) {
 					Attributes: map[string]*string{},
 				},
 			},
-			want: []*v1alpha3.ServiceEntry_Endpoint{},
+			want: []*v1alpha3.WorkloadEntry{},
 		},
 		{
 			name:      "Handles empty instances slice",
 			instances: []*servicediscovery.HttpInstanceSummary{},
-			want:      []*v1alpha3.ServiceEntry_Endpoint{},
+			want:      []*v1alpha3.WorkloadEntry{},
 		},
 		{
 			name:      "Handles nil instances slice",
 			instances: nil,
-			want:      []*v1alpha3.ServiceEntry_Endpoint{},
+			want:      []*v1alpha3.WorkloadEntry{},
 		},
 	}
 	for _, tt := range tests {
@@ -285,35 +285,35 @@ func Test_instanceToEndpoint(t *testing.T) {
 	tests := []struct {
 		name     string
 		instance *servicediscovery.HttpInstanceSummary
-		want     *v1alpha3.ServiceEntry_Endpoint
+		want     *v1alpha3.WorkloadEntry
 	}{
 		{
 			name: "Endpoint from AWS_INSTANCE_IPV4 instance with AWS_INSTANCE_PORT set to known proto",
 			instance: &servicediscovery.HttpInstanceSummary{
 				Attributes: map[string]*string{"AWS_INSTANCE_IPV4": &ipv41, "AWS_INSTANCE_PORT": &httpPortStr},
 			},
-			want: &v1alpha3.ServiceEntry_Endpoint{Address: ipv41, Ports: map[string]uint32{"http": 80}},
+			want: &v1alpha3.WorkloadEntry{Address: ipv41, Ports: map[string]uint32{"http": 80}},
 		},
 		{
 			name: "Endpoint from AWS_INSTANCE_CNAME instance with AWS_INSTANCE_PORT set to known proto",
 			instance: &servicediscovery.HttpInstanceSummary{
 				Attributes: map[string]*string{"AWS_INSTANCE_CNAME": &cname, "AWS_INSTANCE_PORT": &httpPortStr},
 			},
-			want: &v1alpha3.ServiceEntry_Endpoint{Address: cname, Ports: map[string]uint32{"http": 80}},
+			want: &v1alpha3.WorkloadEntry{Address: cname, Ports: map[string]uint32{"http": 80}},
 		},
 		{
 			name: "Endpoint from AWS_INSTANCE_IPV4 instance with AWS_INSTANCE_PORT set to unknown proto",
 			instance: &servicediscovery.HttpInstanceSummary{
 				Attributes: map[string]*string{"AWS_INSTANCE_IPV4": &ipv41, "AWS_INSTANCE_PORT": &portStr},
 			},
-			want: &v1alpha3.ServiceEntry_Endpoint{Address: ipv41, Ports: map[string]uint32{"tcp": 9999}},
+			want: &v1alpha3.WorkloadEntry{Address: ipv41, Ports: map[string]uint32{"tcp": 9999}},
 		},
 		{
 			name: "Endpoint from AWS_INSTANCE_CNAME instance with AWS_INSTANCE_PORT set to unknown proto",
 			instance: &servicediscovery.HttpInstanceSummary{
 				Attributes: map[string]*string{"AWS_INSTANCE_CNAME": &cname, "AWS_INSTANCE_PORT": &portStr},
 			},
-			want: &v1alpha3.ServiceEntry_Endpoint{Address: cname, Ports: map[string]uint32{"tcp": 9999}},
+			want: &v1alpha3.WorkloadEntry{Address: cname, Ports: map[string]uint32{"tcp": 9999}},
 		},
 		{
 			name: "Endpoint infering http and https from AWS_INSTANCE_IPV4 instance without a port",

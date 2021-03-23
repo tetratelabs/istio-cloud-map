@@ -2,11 +2,12 @@ package consul
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/url"
 	"time"
 
 	"github.com/hashicorp/consul/api"
-	"github.com/pkg/errors"
 	"istio.io/api/networking/v1alpha3"
 
 	"github.com/tetratelabs/istio-cloud-map/pkg/infer"
@@ -40,7 +41,7 @@ func NewWatcher(store provider.Store, endpoint string, namespace string) (provid
 	config := api.DefaultConfig()
 	u, err := url.Parse(endpoint)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error parsing endpoint: %s", endpoint)
+		return nil, fmt.Errorf("error parsing endpoint %s: %w", endpoint, err)
 	}
 
 	// TODO: allow users to specify TOKEN
@@ -50,7 +51,7 @@ func NewWatcher(store provider.Store, endpoint string, namespace string) (provid
 
 	client, err := api.NewClient(config)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating client")
+		return nil, fmt.Errorf("error creating client: %w", err)
 	}
 	return &watcher{client: client,
 		store:        store,
@@ -96,9 +97,9 @@ func (w *watcher) refreshStore() {
 	}
 
 	css := w.describeServices(names)
-	data := make(map[string][]*v1alpha3.ServiceEntry_Endpoint, len(css))
+	data := make(map[string][]*v1alpha3.WorkloadEntry, len(css))
 	for name, cs := range css {
-		eps := make([]*v1alpha3.ServiceEntry_Endpoint, 0, len(cs))
+		eps := make([]*v1alpha3.WorkloadEntry, 0, len(cs))
 		for _, c := range cs {
 			if ep := catalogServiceToEndpoints(c); ep != nil {
 				eps = append(eps, ep)
@@ -117,7 +118,7 @@ func (w *watcher) listServices() (map[string][]string, error) {
 		&api.QueryOptions{WaitIndex: w.lastIndex, Namespace: w.namespace},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list services")
+		return nil, fmt.Errorf("failed to list services: %w", err)
 	}
 
 	if w.lastIndex == metadata.LastIndex {
@@ -148,13 +149,13 @@ func (w *watcher) describeService(name string) ([]*api.CatalogService, error) {
 		Namespace: w.namespace,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to describe svc: %s", name)
+		return nil, fmt.Errorf("failed to describe svc %s: %w", name, err)
 	}
 	return svcs, nil
 }
 
 // catalogServiceToEndpoints converts catalog service to service entry endpoint
-func catalogServiceToEndpoints(c *api.CatalogService) *v1alpha3.ServiceEntry_Endpoint {
+func catalogServiceToEndpoints(c *api.CatalogService) *v1alpha3.WorkloadEntry {
 	address := c.Address
 	if address == "" {
 		log.Infof("instance %s of %s.%v is of a type that is not currently supported",
@@ -168,5 +169,5 @@ func catalogServiceToEndpoints(c *api.CatalogService) *v1alpha3.ServiceEntry_End
 	}
 
 	log.Infof("no port found for address %v, assuming http (80) and https (443)", address)
-	return &v1alpha3.ServiceEntry_Endpoint{Address: address, Ports: map[string]uint32{"http": 80, "https": 443}}
+	return &v1alpha3.WorkloadEntry{Address: address, Ports: map[string]uint32{"http": 80, "https": 443}}
 }

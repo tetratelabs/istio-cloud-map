@@ -135,7 +135,7 @@ In particular the controller needs its `--kube-config` flag set to talk to the r
 
 To run go tests locally:
 ```bash
-docker run -d -p 8500:8500 consul:1.8.3 # setup local consul for testing pkg/consul
+docker run --name consul --rm -d -p 8500:8500 consul:1.9.4 # setup local consul for testing pkg/consul
 
 go test ./... -v -race
 ```

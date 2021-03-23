@@ -15,6 +15,7 @@
 package serviceentry
 
 import (
+	"istio.io/api/meta/v1alpha1"
 	"testing"
 
 	"istio.io/api/networking/v1alpha3"
@@ -47,6 +48,7 @@ var (
 		v1alpha3.ServiceEntry{
 			Hosts: []string{"1.us", "2.us"},
 		},
+		v1alpha1.IstioStatus{},
 	}
 
 	them = &ic.ServiceEntry{
@@ -64,6 +66,7 @@ var (
 		v1alpha3.ServiceEntry{
 			Hosts: []string{"1.them", "2.them", "3.them"},
 		},
+		v1alpha1.IstioStatus{},
 	}
 )
 
