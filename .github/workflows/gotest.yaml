@@ -5,7 +5,7 @@ jobs:
   test:
     services:
       consul:
-        image: consul:1.8.3
+        image: consul:1.9.4
         ports:
           - 8500:8500
     name: Test
@@ -14,10 +14,10 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: set up go 1.14
+      - name: set up go 1.16
         uses: actions/setup-go@v1
         with:
-          go-version: 1.14
+          go-version: 1.16
 
       - uses: actions/cache@v2
         with:

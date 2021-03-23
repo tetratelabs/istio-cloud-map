@@ -16,12 +16,13 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	ic "istio.io/client-go/pkg/clientset/versioned"
 	icinformer "istio.io/client-go/pkg/informers/externalversions/networking/v1alpha3"
@@ -69,11 +70,11 @@ func serve() (serve *cobra.Command) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
 			if err != nil {
-				return errors.Wrapf(err, "failed to create a kube client from the config %q", kubeConfig)
+				return fmt.Errorf("failed to create a kube client from the config %q: %w", kubeConfig, err)
 			}
 			ic, err := ic.NewForConfig(cfg)
 			if err != nil {
-				return errors.Wrap(err, "failed to create an istio client from the k8s rest config")
+				return fmt.Errorf("failed to create an istio client from the k8s rest config: %w", err)
 			}
 
 			t := true

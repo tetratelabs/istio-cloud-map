@@ -44,14 +44,14 @@ func (s *synchronizer) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			s.sync()
+			s.sync(ctx)
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (s *synchronizer) sync() {
+func (s *synchronizer) sync(ctx context.Context) {
 	// Entries are generated per host; entirely from information in the slice of endpoints;
 	// so we only actually need to compare the current endpoints with the new endpoints.
 	for host, endpoints := range s.store.Hosts() {
@@ -59,12 +59,12 @@ func (s *synchronizer) sync() {
 		if _, ok := s.serviceEntry.Theirs()[host]; ok {
 			continue
 		}
-		s.createOrUpdate(host, endpoints)
+		s.createOrUpdate(ctx, host, endpoints)
 	}
-	s.garbageCollect()
+	s.garbageCollect(ctx)
 }
 
-func (s *synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.ServiceEntry_Endpoint) {
+func (s *synchronizer) createOrUpdate(ctx context.Context, host string, endpoints []*v1alpha3.WorkloadEntry) {
 	newServiceEntry := infer.ServiceEntry(s.owner, s.serviceEntryPrefix, host, endpoints)
 	name := infer.ServiceEntryName(s.serviceEntryPrefix, host)
 	if _, ok := s.serviceEntry.Ours()[host]; ok {
@@ -74,13 +74,13 @@ func (s *synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.Service
 		}
 		// Otherwise, endpoints have changed so update existing Service Entry
 		n := infer.ServiceEntryName(s.serviceEntryPrefix, host)
-		oldServiceEntry, err := s.client.Get(n, v1.GetOptions{})
+		oldServiceEntry, err := s.client.Get(ctx, n, v1.GetOptions{})
 		if err != nil {
 			log.Errorf("failed to get existing service entry %q for host %q", n, host)
 			return
 		}
 		newServiceEntry.ResourceVersion = oldServiceEntry.ResourceVersion
-		rv, err := s.client.Update(newServiceEntry)
+		rv, err := s.client.Update(ctx, newServiceEntry, v1.UpdateOptions{})
 		if err != nil {
 			log.Errorf("error updating Service Entry %q: %v", name, err)
 			return
@@ -89,21 +89,21 @@ func (s *synchronizer) createOrUpdate(host string, endpoints []*v1alpha3.Service
 		return
 	}
 	// Otherwise, create a new Service Entry
-	rv, err := s.client.Create(newServiceEntry)
+	rv, err := s.client.Create(ctx, newServiceEntry, v1.CreateOptions{})
 	if err != nil {
 		log.Errorf("error creating Service Entry %q: %v\n%v", name, err, newServiceEntry)
 	}
 	log.Infof("created Service Entry %q, ResourceVersion is %q", name, rv.ResourceVersion)
 }
 
-func (s *synchronizer) garbageCollect() {
+func (s *synchronizer) garbageCollect(ctx context.Context) {
 	for host := range s.serviceEntry.Ours() {
 		// If host no longer exists, delete service entry
 		if _, ok := s.store.Hosts()[host]; !ok {
 			// TODO: namespaces!
 			// TODO: Don't attempt to delete no owners
 			name := infer.ServiceEntryName(s.serviceEntryPrefix, host)
-			if err := s.client.Delete(name, &v1.DeleteOptions{}); err != nil {
+			if err := s.client.Delete(ctx, name, v1.DeleteOptions{}); err != nil {
 				log.Errorf("error deleting Service Entry %q: %v", name, err)
 			}
 			log.Infof("successfully deleted Service Entry %q", name)
